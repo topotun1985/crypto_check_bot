@@ -1,4 +1,4 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 from fluentogram import TranslatorRunner
 
 
@@ -30,3 +30,23 @@ def back_to_menu_button(i18n: TranslatorRunner):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text=f"{i18n.get('btn-back')}", callback_data="back_to_menu")
     return keyboard.as_markup()
+
+
+def get_rates_keyboard(i18n: TranslatorRunner, show_in_rub: bool) -> InlineKeyboardMarkup:
+    """Создает клавиатуру с кнопками переключения валюты и возврата в меню."""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=i18n.get('btn-toggle-currency',
+                             currency=i18n.get('show-in-usd' if show_in_rub else 'show-in-rub')),
+                callback_data=f"toggle_currency_display_{'usd' if show_in_rub else 'rub'}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=i18n.get('btn-back'),
+                callback_data="back_to_menu"
+            )
+        ]
+    ])
+    return keyboard

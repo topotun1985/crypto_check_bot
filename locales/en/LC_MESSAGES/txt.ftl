@@ -90,3 +90,6 @@ rate-format-usd = { $name } ({ $symbol }): ${ $price }
 rate-format-rub = { $name } ({ $symbol }): { $price } ₽
 
 rates-updated = 🕒 Updated: { $time } (UTC+0)
+
+
+rates-error = ❌ Error getting rates. Please try again later.

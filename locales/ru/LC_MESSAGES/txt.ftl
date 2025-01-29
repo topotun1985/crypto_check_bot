@@ -90,3 +90,15 @@ rate-format-usd = { $name } ({ $symbol }): ${ $price }
 rate-format-rub = { $name } ({ $symbol }): { $price } ₽
 
 rates-updated = 🕒 Обновлено: { $time } (UTC+0)
+
+
+
+dollar-rate = Курс доллара: { $price } ₽
+
+btn-toggle-currency = 🔄 Показать в { $currency }
+
+show-in-rub = рублях
+
+show-in-usd = долларах
+
+rates-error = ❌ Произошла ошибка при получении курсов. Пожалуйста, попробуйте позже.
