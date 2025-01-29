@@ -20,7 +20,7 @@ subscription_router = Router()
 
 SUBSCRIPTION_PLANS = {
     "basic": {"limit": 5, "price": 1}, 
-    "standart": {"limit": 10, "price": 1}, 
+    "standard": {"limit": 10, "price": 1}, 
     "premium": {"limit": 20, "price": 1}, 
 }
 
@@ -44,7 +44,7 @@ async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
         currency_limit = get_subscription_limit(plan)
         currency_count = await get_user_currency_count(session, user_id)
 
-        text = " ".join([
+        text = "".join([
             f"{i18n.get('subscription-info', plan=plan.capitalize(), expires=expires_text)}\n\n",
             f"{expires_message}\n\n",
             f"{i18n.get('subscription-currencies', current=currency_count, max=currency_limit)}\n\n",
@@ -74,7 +74,7 @@ async def subscription_callback(callback: CallbackQuery, i18n: TranslatorRunner)
 @subscription_router.callback_query(lambda c: c.data.startswith("buy_"))
 async def process_buy_subscription(callback: CallbackQuery):
     """Обрабатывает нажатие на кнопку покупки тарифа через Telegram Stars"""
-    plan = callback.data.split("_")[1]  # basic, advanced, premium
+    plan = callback.data.split("_")[1]  # basic, standard, premium
     price = SUBSCRIPTION_PLANS[plan]["price"]
 
     prices = [LabeledPrice(label=f"Подписка {plan.capitalize()}", amount=price)]

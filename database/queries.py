@@ -1,13 +1,14 @@
-from sqlalchemy import select, func
+from math import exp
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User, Subscription, Alert, UserCurrency, CryptoRate, DollarRate
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Константы для максимального количества валют по тарифам
 SUBSCRIPTION_LIMITS = {
     "free": 1,
     "basic": 5,
-    "advanced": 10,
+    "standard": 10,
     "premium": 20
 }
 
@@ -74,6 +75,44 @@ async def get_user_subscription(session: AsyncSession, telegram_id: int):
         return None
     result = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
     return result.scalars().first()
+
+
+async def reset_expired_subscriptions(session: AsyncSession):
+    """Сбрасывает истекшие подписки и ограничивает валюты для free."""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # Убираем таймзону
+
+    # Обновляем подписку на free, если она истекла
+    stmt = (
+        update(Subscription)
+        .where(Subscription.expires_at < now)
+        .values(plan="free", expires_at=None)
+    )
+    await session.execute(stmt)
+
+    # Деактивируем лишние валюты для пользователей, у которых подписка стала free
+    free_limit = SUBSCRIPTION_LIMITS["free"]
+    result = await session.execute(
+        select(UserCurrency.user_id)
+        .join(Subscription, Subscription.user_id == UserCurrency.user_id)
+        .where(Subscription.plan == "free")
+        .group_by(UserCurrency.user_id)
+        .having(func.count(UserCurrency.id) > free_limit)
+    )
+    users_to_update = result.scalars().all()
+
+    for user_id in users_to_update:
+        result = await session.execute(
+            select(UserCurrency)
+            .where(UserCurrency.user_id == user_id)
+            .where(UserCurrency.is_active == True)
+            .order_by(UserCurrency.created_at.desc())
+        )
+        currencies = result.scalars().all()
+        
+        for currency in currencies[free_limit:]:
+            currency.is_active = False
+
+    await session.commit()
 
 
 async def get_user_currency_count(session: AsyncSession, user_id: int) -> int:
@@ -159,30 +198,6 @@ async def format_subscription_expires(subscription) -> str:
     if not subscription.expires_at:
         return ""
     return subscription.expires_at.strftime('%d.%m.%Y')
-
-
-async def downgrade_subscription_to_free(session: AsyncSession, user_id: int):
-    """Переводит пользователя обратно на 'free', если закончилась подписка."""
-    sub = await get_user_subscription(session, user_id)
-    if sub and sub.plan != "free":
-        sub.plan = "free"
-        sub.expires_at = None
-        await session.commit()
-
-        # Деактивируем лишние валюты
-        free_limit = SUBSCRIPTION_LIMITS["free"]
-        result = await session.execute(
-            select(UserCurrency)
-            .where(UserCurrency.user_id == user_id)
-            .where(UserCurrency.is_active == True)
-            .order_by(UserCurrency.created_at.desc())
-        )
-        currencies = result.scalars().all()
-        
-        for currency in currencies[free_limit:]:
-            currency.is_active = False
-        
-        await session.commit()
 
 
 async def get_all_crypto_rates(session: AsyncSession):

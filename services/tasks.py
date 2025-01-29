@@ -4,7 +4,7 @@ from config import AVAILABLE_CRYPTOCURRENCIES
 from services.binance_api import CryptoService
 from services.cmc_api import FiatService
 from database.database import get_db
-from database.queries import update_crypto_rate, update_dollar_rate
+from database.queries import update_crypto_rate, update_dollar_rate, reset_expired_subscriptions
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ class BackgroundTasks:
             self.is_running = True
             asyncio.create_task(self.update_crypto_prices())
             asyncio.create_task(self.update_usd_rate())
+            asyncio.create_task(self.check_expired_subscriptions())
             logger.info("Фоновые задачи запущены")
 
     async def update_crypto_prices(self):
@@ -48,3 +49,15 @@ class BackgroundTasks:
             except Exception as e:
                 logger.error(f"Ошибка обновления USD/RUB: {e}")
             await asyncio.sleep(600)
+
+    async def check_expired_subscriptions(self):
+        """Проверяет истекшие подписки и сбрасывает их раз в час"""
+        while self.is_running:
+            async with get_db() as session:
+                try:
+                    await reset_expired_subscriptions(session)
+                    logger.info("Проверены истекшие подписки")
+                except Exception as e:
+                    logger.error(f"Ошибка при проверке подписок: {e}")
+            await asyncio.sleep(600) # Проверяем раз в час (для теста раз в 10 минут)
+            

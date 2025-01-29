@@ -45,7 +45,7 @@ async def start_command(message: Message, i18n: TranslatorRunner):
 
         messages = [
             i18n.get('hello-user', username=username),
-            i18n.get('subscription-info', plan=subscription_plan),
+            i18n.get('subscription-info', plan=subscription_plan.capitalize()),
             expires_message,
             i18n.get('subscription-currencies', current=currency_count, max=currency_limit),
             i18n.get('welcome-text')
@@ -64,7 +64,7 @@ async def back_to_menu(callback: CallbackQuery, i18n: TranslatorRunner):
         )
 
         messages = [
-            i18n.get('subscription-info', plan=subscription_plan),
+            i18n.get('subscription-info', plan=subscription_plan.capitalize()),
             expires_message,
             i18n.get('subscription-currencies', current=currency_count, max=currency_limit),
             i18n.get('select-action')

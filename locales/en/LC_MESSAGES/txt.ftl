@@ -6,7 +6,7 @@ subscription-currencies = 💰 Tracked currencies: { $current }/{ $max }
 
 subscription-expires-infinite = ⏳ Unlimited subscription
 
-subscription-expires-until = ⏳  Subscription end date: { $expires } UTC+0
+subscription-expires-until = ⏳  Subscription end date: { $expires } (UTC+0)
 
 subscription-purchase-success = ✅ Subscription successfully purchased! Thank you.
 
@@ -85,4 +85,4 @@ rate-format-usd = { $name } ({ $symbol }): ${ $price }
 
 rate-format-rub = { $name } ({ $symbol }): { $price } ₽
 
-rates-updated = 🕒 Updated: { $time } UTC+0
+rates-updated = 🕒 Updated: { $time } (UTC+0)

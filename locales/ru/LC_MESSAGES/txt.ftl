@@ -6,7 +6,7 @@ subscription-currencies = 💰 Выбрано валют для отслежив
 
 subscription-expires-infinite = ⏳ Бессрочная подписка
 
-subscription-expires-until = ⏳ Дата окончания подписки: { $expires } UTC+0
+subscription-expires-until = ⏳ Дата окончания подписки: { $expires } (UTC+0)
 
 subscription-purchase-success = ✅ Подписка успешно оформлена! Спасибо за покупку.
 
@@ -85,4 +85,4 @@ rate-format-usd = { $name } ({ $symbol }): ${ $price }
 
 rate-format-rub = { $name } ({ $symbol }): { $price } ₽
 
-rates-updated = 🕒 Обновлено: { $time } UTC+0
+rates-updated = 🕒 Обновлено: { $time } (UTC+0)

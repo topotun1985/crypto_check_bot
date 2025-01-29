@@ -49,7 +49,7 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner):
             last_update = max([r.updated_at for r in crypto_rates], default=datetime.utcnow())
             messages.append("")  # Пустая строка для разделения
             messages.append(i18n.get("rates-updated",
-                                   time=last_update.strftime("%Y-%m-%d %H:%M:%S UTC")))
+                                   time=last_update.strftime("%Y-%m-%d %H:%M:%S")))
             
             # Отправляем сообщение
             await callback.message.edit_text(
