@@ -24,6 +24,10 @@ plan-premium-description = Premium — { $limit } currencies
 
 subscription-validity-period = Subscription validity period: 30 days
 
+subscription-already-active = ❌ You already have an active "{ $plan }" subscription until { $expires }. You cannot buy a new one until the current one expires.
+
+subscription-already-active-db = ❌ You already have an active "{ $plan }" subscription until { $expires }. You cannot buy a new one until the current one expires.
+
 price-star = { $price } ⭐
 
 btn-all-rates = 📊 All rates

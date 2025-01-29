@@ -1,4 +1,5 @@
 from math import exp
+from fluentogram import TranslatorRunner
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User, Subscription, Alert, UserCurrency, CryptoRate, DollarRate
@@ -37,7 +38,7 @@ async def update_user_last_activity(session: AsyncSession, telegram_id: int):
         await session.commit()
 
 
-async def add_subscription(session: AsyncSession, telegram_id: int, plan: str, expires_at: datetime = None):
+async def add_subscription(session: AsyncSession, telegram_id: int, plan: str, expires_at: datetime = None, i18n: TranslatorRunner = None):
     """Добавляет или обновляет подписку пользователя."""
     print(f"Adding subscription for user {telegram_id}, plan {plan}")
     
@@ -48,6 +49,16 @@ async def add_subscription(session: AsyncSession, telegram_id: int, plan: str, e
         
     subscription = await get_user_subscription(session, telegram_id)
     print(f"Current subscription: {subscription}")
+
+    now = datetime.utcnow()
+
+    # Проверяем, есть ли уже активная подписка (не free и не истекла)
+    if subscription and subscription.plan != "free" and (not subscription.expires_at or subscription.expires_at > now):
+        return i18n.get(
+            'subscription-already-active-db',
+            plan=subscription.plan.capitalize(),
+            expires=subscription.expires_at.strftime('%d.%m.%Y')
+        )
     
     if subscription:
         print(f"Updating existing subscription")

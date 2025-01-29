@@ -72,11 +72,26 @@ async def subscription_callback(callback: CallbackQuery, i18n: TranslatorRunner)
 
 
 @subscription_router.callback_query(lambda c: c.data.startswith("buy_"))
-async def process_buy_subscription(callback: CallbackQuery):
+async def process_buy_subscription(callback: CallbackQuery, i18n: TranslatorRunner):
     """Обрабатывает нажатие на кнопку покупки тарифа через Telegram Stars"""
     plan = callback.data.split("_")[1]  # basic, standard, premium
-    price = SUBSCRIPTION_PLANS[plan]["price"]
+    async with get_db() as session:
+        user_id = callback.from_user.id
+        subscription = await get_user_subscription(session, user_id)
+        now = datetime.utcnow()
 
+        # Если у пользователя уже есть активная подписка (не free и не истекла), блокируем покупку
+        if subscription and subscription.plan != "free" and (not subscription.expires_at or subscription.expires_at > now):
+            await callback.answer(
+                i18n.get('subscription-already-active', 
+                         plan=subscription.plan.capitalize(), 
+                         expires=subscription.expires_at.strftime('%d.%m.%Y')),
+                show_alert=True
+            )
+            return  # Выходим из функции, не отправляем invoice
+
+    # Если подписка не активна — продолжаем оформление
+    price = SUBSCRIPTION_PLANS[plan]["price"]
     prices = [LabeledPrice(label=f"Подписка {plan.capitalize()}", amount=price)]
 
     await callback.message.answer_invoice(
@@ -139,7 +154,7 @@ async def process_successful_payment(message: Message, i18n: TranslatorRunner):
         # Формируем сообщение с обновленной информацией
         messages = [
             i18n.get('subscription-purchase-success'),
-            i18n.get('subscription-info', plan=subscription_plan),
+            i18n.get('subscription-info', plan=subscription_plan.capitalize()),
             i18n.get('subscription-currencies', current=currency_count, max=currency_limit),
             expires_message,
             i18n.get('select-action')
