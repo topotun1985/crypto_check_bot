@@ -1,6 +1,6 @@
 from math import exp
 from fluentogram import TranslatorRunner
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User, Subscription, Alert, UserCurrency, CryptoRate, DollarRate
 from datetime import datetime, timezone
@@ -100,7 +100,7 @@ async def reset_expired_subscriptions(session: AsyncSession):
     )
     await session.execute(stmt)
 
-    # Деактивируем лишние валюты для пользователей, у которых подписка стала free
+    # Удаляем лишние валюты для пользователей, у которых подписка стала free
     free_limit = SUBSCRIPTION_LIMITS["free"]
     result = await session.execute(
         select(UserCurrency.user_id)
@@ -115,86 +115,15 @@ async def reset_expired_subscriptions(session: AsyncSession):
         result = await session.execute(
             select(UserCurrency)
             .where(UserCurrency.user_id == user_id)
-            .where(UserCurrency.is_active == True)
             .order_by(UserCurrency.created_at.desc())
         )
         currencies = result.scalars().all()
         
+        # Удаляем все валюты после лимита
         for currency in currencies[free_limit:]:
-            currency.is_active = False
+            await session.delete(currency)
 
     await session.commit()
-
-
-async def get_user_currency_count(session: AsyncSession, user_id: int) -> int:
-    """Получает количество отслеживаемых валют пользователя."""
-    result = await session.execute(
-        select(func.count(UserCurrency.id))
-        .where(UserCurrency.user_id == user_id)
-        .where(UserCurrency.is_active == True)
-    )
-    return result.scalar() or 0
-
-
-async def add_user_currency(session: AsyncSession, user_id: int, currency: str):
-    """Добавляет валюту для отслеживания пользователем."""
-    # Проверяем лимит валют
-    subscription = await get_user_subscription(session, user_id)
-    current_count = await get_user_currency_count(session, user_id)
-    currency_limit = get_subscription_limit(subscription.plan if subscription else "free")
-    
-    if current_count >= currency_limit:
-        raise ValueError(f"Достигнут лимит отслеживаемых валют для тарифа {subscription.plan}")
-
-    # Проверяем, нет ли уже такой валюты у пользователя
-    result = await session.execute(
-        select(UserCurrency)
-        .where(UserCurrency.user_id == user_id)
-        .where(UserCurrency.currency == currency)
-    )
-    existing_currency = result.scalars().first()
-    
-    if existing_currency:
-        if existing_currency.is_active:
-            raise ValueError(f"Валюта {currency} уже отслеживается")
-        existing_currency.is_active = True
-        await session.commit()
-        return existing_currency
-    
-    new_currency = UserCurrency(user_id=user_id, currency=currency)
-    session.add(new_currency)
-    await session.commit()
-    return new_currency
-
-
-async def remove_user_currency(session: AsyncSession, user_id: int, currency: str):
-    """Удаляет валюту из отслеживаемых."""
-    result = await session.execute(
-        select(UserCurrency)
-        .where(UserCurrency.user_id == user_id)
-        .where(UserCurrency.currency == currency)
-    )
-    if currency_track := result.scalars().first():
-        currency_track.is_active = False
-        await session.commit()
-
-
-async def add_alert(session: AsyncSession, user_currency_id: int, threshold: float, threshold_type: str, in_rub: bool = False):
-    """Добавляет новый алерт для отслеживаемой валюты."""
-    user_currency = await session.get(UserCurrency, user_currency_id)
-    if not user_currency or not user_currency.is_active:
-        raise ValueError("Указанная валюта не отслеживается")
-    
-    new_alert = Alert(
-        user_id=user_currency.user_id,
-        user_currency_id=user_currency_id,
-        threshold=threshold,
-        threshold_type=threshold_type,
-        in_rub=in_rub
-    )
-    session.add(new_alert)
-    await session.commit()
-    return new_alert
 
 
 def get_subscription_limit(plan: str) -> int:
@@ -209,6 +138,101 @@ async def format_subscription_expires(subscription) -> str:
     if not subscription.expires_at:
         return ""
     return subscription.expires_at.strftime('%d.%m.%Y')
+
+
+async def get_user_currency_count(session: AsyncSession, telegram_id: int) -> int:
+    """Получает количество отслеживаемых валют пользователя."""
+    user = await get_user(session, telegram_id)
+    if not user:
+        return 0
+        
+    result = await session.execute(
+        select(func.count(UserCurrency.id))
+        .where(UserCurrency.user_id == user.id)
+    )
+    return result.scalar() or 0
+
+
+async def get_user_currencies(session: AsyncSession, telegram_id: int) -> list[UserCurrency]:
+    """Получает список валют пользователя."""
+    user = await get_user(session, telegram_id)
+    if not user:
+        return []
+        
+    result = await session.execute(
+        select(UserCurrency)
+        .where(UserCurrency.user_id == user.id)
+    )
+    return result.scalars().all()
+
+async def add_user_currency(session: AsyncSession, telegram_id: int, currency: str):
+    """Добавляет валюту для отслеживания."""
+    user = await get_user(session, telegram_id)
+    if not user:
+        return
+        
+    # Проверяем лимит валют
+    subscription = await get_user_subscription(session, telegram_id)
+    current_currencies = await get_user_currencies(session, telegram_id)
+    currency_limit = SUBSCRIPTION_LIMITS.get(subscription.plan if subscription else "free", SUBSCRIPTION_LIMITS["free"])
+    
+    if len(current_currencies) >= currency_limit:
+        raise ValueError("Достигнут лимит валют для вашей подписки")
+        
+    # Проверяем нет ли уже такой валюты
+    existing = await session.execute(
+        select(UserCurrency)
+        .where(
+            UserCurrency.user_id == user.id,
+            UserCurrency.currency == currency
+        )
+    )
+    if existing.scalar_one_or_none():
+        return
+        
+    # Добавляем валюту
+    currency_obj = UserCurrency(
+        user_id=user.id,
+        currency=currency
+    )
+    session.add(currency_obj)
+    await session.commit()
+    return currency_obj
+
+async def remove_user_currency(session: AsyncSession, telegram_id: int, currency: str):
+    """Удаляет валюту из отслеживаемых."""
+    user = await get_user(session, telegram_id)
+    if not user:
+        return
+        
+    # Удаляем валюту
+    await session.execute(
+        delete(UserCurrency)
+        .where(
+            UserCurrency.user_id == user.id,
+            UserCurrency.currency == currency
+        )
+    )
+    await session.commit()
+
+
+async def add_alert(session: AsyncSession, user_currency_id: int, threshold: float, threshold_type: str, in_rub: bool = False):
+    """Добавляет новый алерт для отслеживаемой валюты."""
+    user_currency = await session.get(UserCurrency, user_currency_id)
+    if not user_currency:
+        raise ValueError("Указанная валюта не отслеживается")
+    
+    new_alert = Alert(
+        user_id=user_currency.user_id,
+        user_currency_id=user_currency_id,
+        threshold=threshold,
+        threshold_type=threshold_type,
+        in_rub=in_rub
+    )
+    session.add(new_alert)
+    await session.commit()
+    return new_alert
+
 
 
 async def get_all_crypto_rates(session: AsyncSession):

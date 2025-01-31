@@ -3,6 +3,9 @@ from .start import start_router
 from .help import help_router
 from .subscription import subscription_router
 from .rates import rates_router
+from .my_currencies import my_currencies_router
+from .choose_currency import choose_currency_router
+
 
 
 def register_all_handlers(dp: Router):
@@ -11,3 +14,5 @@ def register_all_handlers(dp: Router):
     dp.include_router(help_router)
     dp.include_router(subscription_router)
     dp.include_router(rates_router)
+    dp.include_router(my_currencies_router)
+    dp.include_router(choose_currency_router)

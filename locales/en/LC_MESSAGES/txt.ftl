@@ -93,3 +93,21 @@ rates-updated = 🕒 Updated: { $time } (UTC+0)
 
 
 rates-error = ❌ Error getting rates. Please try again later.
+
+
+cmd-start = Start bot
+
+cmd-help = Help
+
+cmd-subscription = Subscription management
+
+
+btn-my-currencies = 👀 My Currencies
+
+my-currencies-empty = ⚠️ You haven't selected any currencies yet
+
+subscription-limit-reached = ⚠️ Currency limit reached for your subscription. To track more currencies, please upgrade to a paid subscription.
+
+currency-added = ✅ Currency {$currency} added to tracking
+
+currency-removed = ❌ Currency {$currency} removed from tracking

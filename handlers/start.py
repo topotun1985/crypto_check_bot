@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 start_router = Router()
 
-async def get_subscription_info(session: AsyncSession, user_id: int, i18n: TranslatorRunner) -> tuple[str, str, int, int]:
+async def get_subscription_info(session: AsyncSession, telegram_id: int, i18n: TranslatorRunner) -> tuple[str, str, int, int]:
     """Получает информацию о подписке пользователя."""
-    subscription = await get_user_subscription(session, user_id)
+    subscription = await get_user_subscription(session, telegram_id)
     subscription_plan = subscription.plan if subscription else "free"
     expires_text = await format_subscription_expires(subscription)
     
@@ -23,7 +23,7 @@ async def get_subscription_info(session: AsyncSession, user_id: int, i18n: Trans
     else:
         expires_message = i18n.get('subscription-expires-infinite')
     
-    currency_count = await get_user_currency_count(session, user_id)
+    currency_count = await get_user_currency_count(session, telegram_id)
     currency_limit = get_subscription_limit(subscription_plan)
     
     return subscription_plan, expires_message, currency_count, currency_limit
