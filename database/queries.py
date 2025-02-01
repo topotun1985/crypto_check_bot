@@ -22,8 +22,7 @@ async def add_user(session: AsyncSession, telegram_id: int, username: str, langu
     )
     session.add(new_user)
     await session.commit()
-    await add_subscription(session, new_user.id, "free")
-
+    await add_subscription(session, telegram_id, "free")  
 
 async def get_user(session: AsyncSession, telegram_id: int):
     """Получает пользователя по telegram_id."""
@@ -115,11 +114,11 @@ async def reset_expired_subscriptions(session: AsyncSession):
         result = await session.execute(
             select(UserCurrency)
             .where(UserCurrency.user_id == user_id)
-            .order_by(UserCurrency.created_at.desc())
+            .order_by(UserCurrency.created_at.asc())  
         )
         currencies = result.scalars().all()
         
-        # Удаляем все валюты после лимита
+        # Оставляем только самые старые валюты в пределах лимита
         for currency in currencies[free_limit:]:
             await session.delete(currency)
 
@@ -216,24 +215,86 @@ async def remove_user_currency(session: AsyncSession, telegram_id: int, currency
     await session.commit()
 
 
-async def add_alert(session: AsyncSession, user_currency_id: int, threshold: float, threshold_type: str, in_rub: bool = False):
-    """Добавляет новый алерт для отслеживаемой валюты."""
-    user_currency = await session.get(UserCurrency, user_currency_id)
+async def add_alert(session: AsyncSession, user_currency_id: int, value: float, alert_type: str, in_rub: bool = False, percent_type: str = None):
+    """Добавляет или обновляет настройки уведомлений."""
+    # Получаем user_currency для получения user_id
+    user_currency = await get_user_currency_by_id(session, user_currency_id)
     if not user_currency:
-        raise ValueError("Указанная валюта не отслеживается")
+        return None
+
+    # Проверяем существующий алерт
+    alert = await get_alert_settings(session, user_currency_id)
     
-    new_alert = Alert(
-        user_id=user_currency.user_id,
-        user_currency_id=user_currency_id,
-        threshold=threshold,
-        threshold_type=threshold_type,
-        in_rub=in_rub
-    )
-    session.add(new_alert)
+    if alert:
+        # Обновляем существующий алерт
+        if alert_type == "threshold":
+            alert.threshold = value
+            alert.in_rub = in_rub
+        else:  # percent
+            alert.percent_change = value
+            alert.percent_type = percent_type
+    else:
+        # Создаем новый алерт
+        alert = Alert(
+            user_id=user_currency.user_id,
+            user_currency_id=user_currency_id,
+            threshold=value if alert_type == "threshold" else None,
+            percent_change=value if alert_type == "percent" else None,
+            percent_type=percent_type if alert_type == "percent" else None,
+            in_rub=in_rub if alert_type == "threshold" else False,
+            is_active=True
+        )
+        session.add(alert)
+    
     await session.commit()
-    return new_alert
+    return alert
 
+async def update_alert(session: AsyncSession, alert_id: int, is_active: bool = None, threshold: float = None,
+                      percent_change: float = None, in_rub: bool = None, percent_type: str = None):
+    """Обновляет настройки уведомления."""
+    result = await session.execute(select(Alert).where(Alert.id == alert_id))
+    alert = result.scalar_one_or_none()
+    
+    if alert:
+        if is_active is not None:
+            alert.is_active = is_active
+        if threshold is not None:
+            alert.threshold = threshold
+            if in_rub is not None:
+                alert.in_rub = in_rub
+        if percent_change is not None:
+            alert.percent_change = percent_change
+            if percent_type is not None:
+                alert.percent_type = percent_type
+        
+        alert.updated_at = datetime.utcnow()
+        await session.commit()
+    
+    return alert
 
+async def delete_alert(session: AsyncSession, user_currency_id: int):
+    """Удаляет настройки уведомлений для валюты."""
+    await session.execute(
+        delete(Alert)
+        .where(Alert.user_currency_id == user_currency_id)
+    )
+    await session.commit()
+
+async def get_user_currency_by_id(session: AsyncSession, currency_id: int) -> UserCurrency:
+    """Получает валюту пользователя по ID."""
+    result = await session.execute(
+        select(UserCurrency)
+        .where(UserCurrency.id == currency_id)
+    )
+    return result.scalar_one_or_none()
+
+async def get_crypto_rate(session: AsyncSession, currency: str) -> CryptoRate:
+    """Получает текущий курс криптовалюты."""
+    result = await session.execute(
+        select(CryptoRate)
+        .where(CryptoRate.currency == currency)
+    )
+    return result.scalar_one_or_none()
 
 async def get_all_crypto_rates(session: AsyncSession):
     """Получает все курсы криптовалют."""
@@ -286,3 +347,11 @@ async def update_dollar_rate(session: AsyncSession, price: float):
     
     await session.commit()
     return rate
+
+async def get_alert_settings(session: AsyncSession, user_currency_id: int) -> Alert:
+    """Получает настройки уведомлений для валюты пользователя."""
+    result = await session.execute(
+        select(Alert)
+        .where(Alert.user_currency_id == user_currency_id)
+    )
+    return result.scalar_one_or_none()

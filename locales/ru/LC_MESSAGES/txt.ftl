@@ -1,6 +1,6 @@
-hello-user = Привет, { $username }!
+hello-user = 👋 Привет, { $username }!
 
-subscription-info = 📜 Ваша подписка: { $plan } 
+subscription-info = 📜 Ваша подписка: { $plan }
 
 subscription-currencies = 💰 Выбрано валют для отслеживания: { $current }/{ $max }
 
@@ -122,5 +122,73 @@ currency-added = ✅ Валюта {$currency} добавлена для отсл
 currency-removed = ❌ Валюта {$currency} удалена из отслеживания
 
 choose-currency-instruction = Выберите валюты для отслеживания:
+
 ✅ - валюта отслеживается
+
 ☑️ - валюта не отслеживается
+
+# Уведомления
+alerts-list-header = 🔔 Настройки уведомлений
+alerts-choose-currency = Выберите валюту для настройки уведомлений:
+alerts-no-currencies = У вас нет отслеживаемых валют. Добавьте валюты в разделе "Мои валюты".
+alerts-error = ❌ Произошла ошибка. Попробуйте позже.
+alerts-currency-not-found = ❌ Валюта не найдена.
+
+alerts-settings-header = 🔔 Настройки уведомлений для { $currency }
+alerts-current-price-both = 💰 Текущая цена: { $price_usd } USD / { $price_rub } ₽
+
+alerts-current-settings = Текущие настройки:
+alerts-notifications-enabled = ✅ Уведомления включены
+alerts-notifications-disabled = ❌ Уведомления выключены
+alerts-threshold-not-set = 💲 Пороговое значение не установлено
+alerts-threshold-usd = 💲 Пороговое значение: { $threshold_usd } USD
+alerts-threshold-rub = 💲 Пороговое значение: { $threshold_rub } ₽
+alerts-percent-not-set = 📊 Процент изменения не установлен
+alerts-percent-change = 📊 Процент изменения: { $percent }%
+
+alerts-enabled = ✅ Уведомления для { $currency } включены
+alerts-disabled = ❌ Уведомления для { $currency } выключены
+alerts-threshold-set-usd = ✅ Установлено пороговое значение: { $value } USD
+alerts-threshold-set-rub = ✅ Установлено пороговое значение: { $value } ₽
+alerts-percent-set = ✅ Установлен процент изменения: { $value }%
+
+alerts-choose-currency-usd-rub = Выберите валюту для порога:
+alerts-choose-usd = В долларах (USD)
+alerts-choose-rub = В рублях (₽)
+alerts-enter-threshold-usd = Введите пороговое значение в USD:
+alerts-enter-threshold-rub = Введите пороговое значение в рублях:
+alerts-enter-percent = Введите процент изменения (положительное число):
+alerts-invalid-number = ❌  Пожалуйста, введите корректное число
+alerts-invalid-percent = ❌ Пожалуйста, введите положительное число
+
+# Процентные изменения
+alerts-choose-percent-type = Выберите тип изменения цены:
+alerts-percent-type-up = При росте
+alerts-percent-type-down = При падении
+alerts-percent-type-both = При любом изменении
+
+alerts-percent-type-up-text = при росте
+alerts-percent-type-down-text = при падении
+alerts-percent-type-both-text = при любом изменении
+
+alerts-enter-percent-with-type = Введите процент изменения {$type}:
+alerts-percent-set-with-type = Установлено уведомление {$type} при изменении на {$value}%
+
+alerts-percent-type-current-up = При росте на {$value}%
+alerts-percent-type-current-down = При падении на {$value}%
+alerts-percent-type-current-both = При изменении на {$value}%
+
+# Кнопки
+button-enable-alerts = 🔔 Включить уведомления
+button-disable-alerts = 🔕 Выключить уведомления
+button-set-threshold = 💲 Установить порог
+button-change-threshold = 💲 Изменить порог
+button-set-threshold-usd = 💲 Установить порог (USD)
+button-set-threshold-rub = 💲 Установить порог (₽)
+button-set-percent = 📊 Установить процент
+button-back-to-alerts = ↩️ К списку валют
+
+alert-threshold-reached = 🚨 { $currency } достиг { $price } $!
+
+alert-percent-changed = 📊 { $currency } изменился на { $percent }% за 24ч!
+Текущая цена: { $price } $

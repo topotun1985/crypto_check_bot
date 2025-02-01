@@ -111,3 +111,56 @@ subscription-limit-reached = ⚠️ Currency limit reached for your subscription
 currency-added = ✅ Currency {$currency} added to tracking
 
 currency-removed = ❌ Currency {$currency} removed from tracking
+
+# Alerts
+alerts-list-header = 🔔 Alert Settings
+alerts-choose-currency = Choose a currency to set up alerts:
+alerts-no-currencies = You don't have any tracked currencies. Add currencies in the "My Currencies" section.
+alerts-error = ❌ An error occurred. Please try again later.
+alerts-currency-not-found = ❌ Currency not found.
+
+alerts-settings-header = 🔔 Alert Settings for { $currency }
+alerts-current-price = 💰 Current price: { $price } USD
+
+alerts-current-settings = Current settings:
+alerts-notifications-enabled = ✅ Notifications enabled
+alerts-notifications-disabled = ❌ Notifications disabled
+alerts-threshold-not-set = 💲 Threshold not set
+alerts-threshold-usd = 💲 Threshold: { $threshold } USD
+alerts-percent-not-set = 📊 Percent change not set
+alerts-percent-change = 📊 Percent change: { $percent }%
+
+alerts-enabled = ✅ Notifications for { $currency } enabled
+alerts-disabled = ❌ Notifications for { $currency } disabled
+alerts-threshold-set = ✅ Threshold set to: { $value } USD
+alerts-percent-set = ✅ Percent change set to: { $value }%
+
+alerts-enter-threshold = Enter threshold value in USD:
+alerts-enter-percent = Enter percent change (positive number):
+alerts-invalid-number = ❌ Please enter a valid number
+alerts-invalid-percent = ❌ Please enter a positive number
+
+# Percentage changes
+alerts-choose-percent-type = Choose price change type:
+alerts-percent-type-up = 📈 On increase
+alerts-percent-type-down = 📉 On decrease
+alerts-percent-type-both = 🔄 On any change
+
+alerts-percent-type-up-text = on increase
+alerts-percent-type-down-text = on decrease
+alerts-percent-type-both-text = on any change
+
+alerts-enter-percent-with-type = Enter percentage change {$type}:
+alerts-percent-set-with-type = ✅ Alert set {$type} when price changes by {$value}%
+
+alerts-percent-type-current-up = 📈 On increase by {$value}%
+alerts-percent-type-current-down = 📉 On decrease by {$value}%
+alerts-percent-type-current-both = 🔄 On any change by {$value}%
+
+# Buttons
+button-enable-alerts = 🔔 Enable notifications
+button-disable-alerts = 🔕 Disable notifications
+button-set-threshold = 💲 Set threshold
+button-change-threshold = 💲 Change threshold
+button-set-percent = 📊 Set percent
+button-back-to-alerts = ↩️ Back to currencies
