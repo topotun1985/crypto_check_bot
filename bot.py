@@ -87,13 +87,15 @@ async def main():
 
     await create_db_and_tables()
 
+    # Register all handlers
     register_all_handlers(dp)
 
     # Регистрируем миддлварь для i18n
     dp.update.middleware(TranslatorRunnerMiddleware())
 
     # Запускаем фоновые задачи
-    tasks = BackgroundTasks()
+    tasks = BackgroundTasks(bot)
+    tasks.i18n = translator_hub.get_translator_by_locale(locale='ru')
     await tasks.start()
 
     # Регистрируем команды бота

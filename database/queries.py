@@ -215,33 +215,32 @@ async def remove_user_currency(session: AsyncSession, telegram_id: int, currency
     await session.commit()
 
 
-async def add_alert(session: AsyncSession, user_currency_id: int, value: float, alert_type: str, in_rub: bool = False, percent_type: str = None):
+async def add_alert(session: AsyncSession, user_id: int, user_currency_id: int, threshold: float, 
+                   condition_type: str, currency_type: str):
     """Добавляет или обновляет настройки уведомлений."""
-    # Получаем user_currency для получения user_id
-    user_currency = await get_user_currency_by_id(session, user_currency_id)
-    if not user_currency:
-        return None
-
-    # Проверяем существующий алерт
-    alert = await get_alert_settings(session, user_currency_id)
+    # Проверяем существующий алерт с такими же параметрами
+    result = await session.execute(
+        select(Alert).where(
+            Alert.user_id == user_id,
+            Alert.user_currency_id == user_currency_id,
+            Alert.condition_type == condition_type,
+            Alert.currency_type == currency_type
+        )
+    )
+    alert = result.scalars().first()
     
     if alert:
         # Обновляем существующий алерт
-        if alert_type == "threshold":
-            alert.threshold = value
-            alert.in_rub = in_rub
-        else:  # percent
-            alert.percent_change = value
-            alert.percent_type = percent_type
+        alert.threshold = threshold
+        alert.is_active = True
     else:
         # Создаем новый алерт
         alert = Alert(
-            user_id=user_currency.user_id,
+            user_id=user_id,
             user_currency_id=user_currency_id,
-            threshold=value if alert_type == "threshold" else None,
-            percent_change=value if alert_type == "percent" else None,
-            percent_type=percent_type if alert_type == "percent" else None,
-            in_rub=in_rub if alert_type == "threshold" else False,
+            threshold=threshold,
+            condition_type=condition_type,
+            currency_type=currency_type,
             is_active=True
         )
         session.add(alert)
@@ -249,8 +248,36 @@ async def add_alert(session: AsyncSession, user_currency_id: int, value: float, 
     await session.commit()
     return alert
 
-async def update_alert(session: AsyncSession, alert_id: int, is_active: bool = None, threshold: float = None,
-                      percent_change: float = None, in_rub: bool = None, percent_type: str = None):
+async def get_alert_settings(session: AsyncSession, user_currency_id: int):
+    """Получает настройки уведомлений для валюты пользователя."""
+    result = await session.execute(
+        select(Alert)
+        .where(Alert.user_currency_id == user_currency_id)
+    )
+    return result.scalar()  # Return first result or None
+
+
+async def get_all_currency_alerts(session: AsyncSession, user_id: int, user_currency_id: int):
+    """Получает все уведомления для валюты пользователя."""
+    result = await session.execute(
+        select(Alert).where(
+            Alert.user_id == user_id,
+            Alert.user_currency_id == user_currency_id
+        )
+    )
+    return result.scalars().all()
+
+async def delete_alert(session: AsyncSession, user_id: int, user_currency_id: int):
+    """Удаляет все настройки уведомлений для валюты."""
+    await session.execute(
+        delete(Alert).where(
+            Alert.user_id == user_id,
+            Alert.user_currency_id == user_currency_id
+        )
+    )
+    await session.commit()
+
+async def update_alert(session: AsyncSession, alert_id: int, is_active: bool = None, threshold: float = None):
     """Обновляет настройки уведомления."""
     result = await session.execute(select(Alert).where(Alert.id == alert_id))
     alert = result.scalar_one_or_none()
@@ -260,31 +287,17 @@ async def update_alert(session: AsyncSession, alert_id: int, is_active: bool = N
             alert.is_active = is_active
         if threshold is not None:
             alert.threshold = threshold
-            if in_rub is not None:
-                alert.in_rub = in_rub
-        if percent_change is not None:
-            alert.percent_change = percent_change
-            if percent_type is not None:
-                alert.percent_type = percent_type
         
         alert.updated_at = datetime.utcnow()
         await session.commit()
     
     return alert
 
-async def delete_alert(session: AsyncSession, user_currency_id: int):
-    """Удаляет настройки уведомлений для валюты."""
-    await session.execute(
-        delete(Alert)
-        .where(Alert.user_currency_id == user_currency_id)
-    )
-    await session.commit()
-
-async def get_user_currency_by_id(session: AsyncSession, currency_id: int) -> UserCurrency:
+async def get_user_currency_by_id(session: AsyncSession, user_currency_id: int) -> UserCurrency:
     """Получает валюту пользователя по ID."""
     result = await session.execute(
         select(UserCurrency)
-        .where(UserCurrency.id == currency_id)
+        .where(UserCurrency.id == user_currency_id)
     )
     return result.scalar_one_or_none()
 
@@ -348,10 +361,4 @@ async def update_dollar_rate(session: AsyncSession, price: float):
     await session.commit()
     return rate
 
-async def get_alert_settings(session: AsyncSession, user_currency_id: int) -> Alert:
-    """Получает настройки уведомлений для валюты пользователя."""
-    result = await session.execute(
-        select(Alert)
-        .where(Alert.user_currency_id == user_currency_id)
-    )
-    return result.scalar_one_or_none()
+

@@ -10,7 +10,7 @@ def main_menu_button(i18n: TranslatorRunner):
     keyboard.button(text=i18n.get("btn-all-rates"), callback_data="show_all_currency")
     keyboard.button(text=i18n.get("btn-my-currencies"), callback_data="show_my_currencies")
     keyboard.button(text=i18n.get("btn-choose-currency"), callback_data="choose_currency")
-    keyboard.button(text=i18n.get("btn-set-alert"), callback_data="show_alerts")
+    keyboard.button(text=i18n.get("btn-set-alert"), callback_data="notification_settings")
     keyboard.button(text=i18n.get("btn-subscription"), callback_data="subscription")
     keyboard.button(text=i18n.get("btn-help"), callback_data="help")
     keyboard.adjust(1)
@@ -86,7 +86,7 @@ def get_choose_currency_keyboard(i18n: TranslatorRunner, user_currencies: list[s
     
     keyboard.button(
         text=i18n.get("btn-set-alert"),
-        callback_data="setup_notifications"
+        callback_data="notification_settings"
     )
     keyboard.button(
         text=i18n.get("btn-back"),
@@ -120,63 +120,70 @@ def get_alerts_list_keyboard(i18n: TranslatorRunner, currency_alerts: list) -> I
     return keyboard.as_markup()
 
 
-def get_alert_settings_keyboard(i18n: TranslatorRunner, currency_id: int, alert: Alert = None, language: str = "en") -> InlineKeyboardMarkup:
+def get_alert_settings_keyboard(i18n: TranslatorRunner, currency_id: int, alerts: list[Alert] = None, user_language: str = None) -> InlineKeyboardMarkup:
     """Создает клавиатуру для настройки уведомлений конкретной валюты."""
     keyboard = InlineKeyboardBuilder()
     
+    # Проверяем есть ли активные алерты
+    has_active_alerts = any(alert.is_active for alert in alerts) if alerts else False
+    
     # Кнопка включения/выключения уведомлений
-    if alert and alert.is_active:
+    if has_active_alerts:
         keyboard.button(
             text=i18n.get("button-disable-alerts"),
-            callback_data=f"alert_toggle_{currency_id}"
+            callback_data=f"disable_alert_{alerts[0].id}"
         )
     else:
         keyboard.button(
             text=i18n.get("button-enable-alerts"),
-            callback_data=f"alert_toggle_{currency_id}"
+            callback_data=f"enable_alerts_{currency_id}"
         )
     
-    # Кнопки настройки порогов и процентов
-    if language == "ru":
-        # Для русского языка показываем одну кнопку для порога
+    # Кнопки настройки порогов в USD
+    keyboard.button(
+        text=i18n.get("button-set-threshold-above"),
+        callback_data=f"alert_set_threshold_{currency_id}_above_usd"
+    )
+    keyboard.button(
+        text=i18n.get("button-set-threshold-below"),
+        callback_data=f"alert_set_threshold_{currency_id}_below_usd"
+    )
+    
+    # Если пользователь русскоязычный, добавляем кнопки для RUB
+    if user_language == "ru":
         keyboard.button(
-            text=i18n.get("button-change-threshold" if alert and alert.threshold else "button-set-threshold"),
-            callback_data=f"alert_set_threshold_{currency_id}"
+            text=i18n.get("button-set-threshold-above-rub"),
+            callback_data=f"alert_set_threshold_{currency_id}_above_rub"
         )
+        keyboard.button(
+            text=i18n.get("button-set-threshold-below-rub"),
+            callback_data=f"alert_set_threshold_{currency_id}_below_rub"
+        )
+        keyboard.adjust(1, 2, 2)  # 1 кнопка в первой строке, по 2 в остальных
     else:
-        # Для других языков показываем кнопку только для USD
-        keyboard.button(
-            text=i18n.get("button-set-threshold-usd"),
-            callback_data=f"alert_set_threshold_{currency_id}"
-        )
+        keyboard.adjust(1, 2)  # 1 кнопка в первой строке, 2 во второй
     
+    # Кнопка возврата к списку валют
     keyboard.button(
-        text=i18n.get("button-set-percent"),
-        callback_data=f"alert_set_percent_{currency_id}"
+        text=i18n.get("btn-back"),
+        callback_data="back_to_notifications"
     )
+    keyboard.adjust(1)
     
-    # Кнопки навигации
-    keyboard.button(
-        text=i18n.get("button-back-to-alerts"),
-        callback_data="show_alerts"
-    )
-    
-    keyboard.adjust(1)  # Располагаем кнопки в один столбец
     return keyboard.as_markup()
 
 
-def get_currency_choice_keyboard(i18n: TranslatorRunner, currency_id: int) -> InlineKeyboardMarkup:
+def get_currency_choice_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str = "above") -> InlineKeyboardMarkup:
     """Создает клавиатуру для выбора валюты порога."""
     keyboard = InlineKeyboardBuilder()
     
     keyboard.button(
-        text=i18n.get("alerts-choose-usd"),
-        callback_data=f"alert_currency_choice_usd_{currency_id}"
+        text=i18n.get("button-choose-usd"),
+        callback_data=f"alert_currency_usd_{currency_id}_{condition_type}"
     )
-    
     keyboard.button(
-        text=i18n.get("alerts-choose-rub"),
-        callback_data=f"alert_currency_choice_rub_{currency_id}"
+        text=i18n.get("button-choose-rub"),
+        callback_data=f"alert_currency_rub_{currency_id}_{condition_type}"
     )
     
     keyboard.button(
@@ -188,29 +195,41 @@ def get_currency_choice_keyboard(i18n: TranslatorRunner, currency_id: int) -> In
     return keyboard.as_markup()
 
 
-def get_percent_type_keyboard(i18n: TranslatorRunner, currency_id: int) -> InlineKeyboardMarkup:
-    """Создает клавиатуру для выбора типа процентного изменения."""
+def get_currency_type_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str) -> InlineKeyboardMarkup:
+    """Создает клавиатуру для выбора типа валюты (USD/RUB)."""
     keyboard = InlineKeyboardBuilder()
-    
     keyboard.button(
-        text=i18n.get("alerts-percent-type-up"),
-        callback_data=f"alert_percent_type_up_{currency_id}"
+        text=i18n.get("button-set-threshold-usd"),
+        callback_data=f"set_currency_type_{currency_id}_{condition_type}_usd"
     )
-    
     keyboard.button(
-        text=i18n.get("alerts-percent-type-down"),
-        callback_data=f"alert_percent_type_down_{currency_id}"
+        text=i18n.get("button-set-threshold-rub"),
+        callback_data=f"set_currency_type_{currency_id}_{condition_type}_rub"
     )
-    
     keyboard.button(
-        text=i18n.get("alerts-percent-type-both"),
-        callback_data=f"alert_percent_type_both_{currency_id}"
+        text=i18n.get("back-button"),
+        callback_data=f"set_threshold_{currency_id}_{condition_type}"
     )
-    
+    keyboard.adjust(1)
+    return keyboard.as_markup()
+
+def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str, currency_type: str) -> InlineKeyboardMarkup:
+    """Создает клавиатуру для ввода порогового значения."""
+    keyboard = InlineKeyboardBuilder()
     keyboard.button(
-        text=i18n.get("btn-back"),
-        callback_data=f"alert_currency_{currency_id}"
+        text=i18n.get("back-button"),
+        callback_data="back_to_condition"
     )
-    
+    keyboard.adjust(1)
+    return keyboard.as_markup()
+
+
+def get_new_alert_keyboard(i18n: TranslatorRunner, alert_id: int, currency: str) -> InlineKeyboardMarkup:
+    """Создает клавиатуру для установки нового порога после срабатывания уведомления."""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(
+        text=i18n.get("btn-set-new-threshold"),
+        callback_data=f"set_new_threshold_{alert_id}"
+    )
     keyboard.adjust(1)
     return keyboard.as_markup()

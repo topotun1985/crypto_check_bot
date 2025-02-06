@@ -5,14 +5,17 @@ from services.binance_api import CryptoService
 from services.cmc_api import FiatService
 from database.database import get_db
 from database.queries import update_crypto_rate, update_dollar_rate, reset_expired_subscriptions
+from handlers.notification_settings import check_alert_conditions
 
 logger = logging.getLogger(__name__)
 
 class BackgroundTasks:
-    def __init__(self):
+    def __init__(self, bot=None):
         self.crypto_service = CryptoService()
         self.fiat_service = FiatService()
         self.is_running = False
+        self.bot = bot
+        self.i18n = None
 
     async def start(self):
         """Запуск фоновых задач"""
@@ -21,6 +24,8 @@ class BackgroundTasks:
             asyncio.create_task(self.update_crypto_prices())
             asyncio.create_task(self.update_usd_rate())
             asyncio.create_task(self.check_expired_subscriptions())
+            if self.bot:
+                asyncio.create_task(self.check_alerts())
             logger.info("Фоновые задачи запущены")
 
     async def update_crypto_prices(self):
@@ -60,4 +65,17 @@ class BackgroundTasks:
                 except Exception as e:
                     logger.error(f"Ошибка при проверке подписок: {e}")
             await asyncio.sleep(600) # Проверяем раз в час (для теста раз в 10 минут)
+            
+    async def check_alerts(self):
+        """Проверяет условия алертов и отправляет уведомления (раз в минуту)"""
+        while self.is_running:
+            try:
+                if self.i18n:
+                    await check_alert_conditions(self.bot, self.i18n)
+                    logger.info("Проверены условия алертов")
+                else:
+                    logger.error("i18n не инициализирован для проверки алертов")
+            except Exception as e:
+                logger.error(f"Ошибка при проверке алертов: {e}")
+            await asyncio.sleep(60)
             

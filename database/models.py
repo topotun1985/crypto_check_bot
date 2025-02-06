@@ -56,22 +56,25 @@ class Alert(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     user_currency_id = Column(Integer, ForeignKey("user_currencies.id", ondelete="CASCADE"))
-    threshold = Column(DECIMAL(18,8), nullable=True)  # Сделали необязательным
-    percent_change = Column(DECIMAL(5,2), nullable=True)  # Добавили поле для процентного изменения
-    percent_type = Column(String, nullable=True)  # up, down, both
-    in_rub = Column(Boolean, default=False)
-    is_active = Column(Boolean, default=True)  # Добавили поле для статуса активности
+    threshold = Column(DECIMAL(18,8), nullable=False)
+    condition_type = Column(String(50), nullable=False, server_default='above')  # 'above' or 'below'
+    currency_type = Column(String(10), nullable=False, server_default='USD')   # 'USD' or 'RUB'
+    is_active = Column(Boolean, default=True)
+    last_triggered_at = Column(TIMESTAMP, nullable=True)  # When the alert was last triggered
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)
 
-    # Добавляем связи
+    # Relationships
     user = relationship("User", back_populates="alerts")
     user_currency = relationship("UserCurrency", back_populates="alerts")
 
-    # Добавляем проверку, что хотя бы одно из полей threshold или percent_change должно быть заполнено
     __table_args__ = (
-        CheckConstraint('threshold IS NOT NULL OR percent_change IS NOT NULL', 
-                       name='check_alert_has_condition'),
+        # Ensure only one active alert per currency/condition/type combination
+        UniqueConstraint(
+            'user_id', 'user_currency_id', 'condition_type', 'currency_type',
+            name='uix_user_currency_alert_type'
+        ),
+        CheckConstraint('threshold IS NOT NULL', name='check_alert_has_condition'),
     )
 
 
