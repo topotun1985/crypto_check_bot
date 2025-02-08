@@ -207,7 +207,7 @@ def get_currency_type_keyboard(i18n: TranslatorRunner, currency_id: int, conditi
         callback_data=f"set_currency_type_{currency_id}_{condition_type}_rub"
     )
     keyboard.button(
-        text=i18n.get("back-button"),
+        text=i18n.get("btn-back"),
         callback_data=f"set_threshold_{currency_id}_{condition_type}"
     )
     keyboard.adjust(1)
@@ -217,7 +217,7 @@ def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condi
     """Создает клавиатуру для ввода порогового значения."""
     keyboard = InlineKeyboardBuilder()
     keyboard.button(
-        text=i18n.get("back-button"),
+        text=i18n.get("btn-back"),
         callback_data="back_to_condition"
     )
     keyboard.adjust(1)
