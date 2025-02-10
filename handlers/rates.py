@@ -7,6 +7,7 @@ from database.queries import get_all_crypto_rates, get_dollar_rate, get_user
 from keyboards.inline import back_to_menu_button, get_rates_keyboard
 from datetime import datetime
 from config import CRYPTO_NAMES
+from utils.format_helpers import format_crypto_price
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +51,12 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_i
                     messages.append(i18n.get("rate-format-rub",
                                            name=crypto_name,
                                            symbol=rate.currency,
-                                           price=f"{price_rub:,.2f}"))
+                                           price=format_crypto_price(price_rub)))
                 else:
                     messages.append(i18n.get("rate-format-usd",
                                            name=crypto_name,
                                            symbol=rate.currency,
-                                           price=f"{float(rate.price):,.2f}"))
+                                           price=format_crypto_price(float(rate.price))))
             
             last_update = max([r.updated_at for r in crypto_rates], default=datetime.utcnow())
             messages.append("")

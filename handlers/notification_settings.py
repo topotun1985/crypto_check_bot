@@ -26,6 +26,7 @@ from database.queries import (
     get_dollar_rate
 )
 from keyboards.inline import get_new_alert_keyboard, get_threshold_input_keyboard, get_alert_settings_keyboard
+from utils.format_helpers import format_crypto_price
 from .start import back_to_menu  # Для правильной навигации
 
 logger = logging.getLogger(__name__)
@@ -205,10 +206,10 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
                 price_msg.append("")
                 if user.language == "ru" and dollar_rate:
                     price_rub = crypto_rate.price * dollar_rate.price
-                    price_msg.append(i18n.get("alerts-current-price")+f"\n{crypto_rate.price:.2f} $⁨\n{price_rub:.2f} ₽⁩")
+                    price_msg.append(i18n.get("alerts-current-price")+f"\n{format_crypto_price(float(crypto_rate.price))} $⁨\n{format_crypto_price(float(price_rub))} ₽⁩")
                     price_msg.append("")
                 else:
-                    price_msg.append(i18n.get("alerts-current-price")+f" {crypto_rate.price:.2f} $⁨")
+                    price_msg.append(i18n.get("alerts-current-price")+f" {format_crypto_price(float(crypto_rate.price))} $⁨")
                     price_msg.append("")
             
             # Формируем сообщение об алертах
@@ -228,16 +229,16 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
             # Показываем USD алерты
             alert_msg.append(i18n.get("alerts-usd-header"))
             alert_msg.append("")
-            alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{usd_alerts['above'].threshold:.2f}⁩" if "above" in usd_alerts and usd_alerts['above'].is_active else i18n.get("alerts-not-set")))
-            alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{usd_alerts['below'].threshold:.2f}⁩" if "below" in usd_alerts and usd_alerts['below'].is_active else i18n.get("alerts-not-set")))
+            alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{format_crypto_price(float(usd_alerts['above'].threshold))}⁩" if "above" in usd_alerts and usd_alerts['above'].is_active else i18n.get("alerts-not-set")))
+            alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{format_crypto_price(float(usd_alerts['below'].threshold))}⁩" if "below" in usd_alerts and usd_alerts['below'].is_active else i18n.get("alerts-not-set")))
             alert_msg.append("")
             
             # Показываем RUB алерты только для русскоязычных пользователей
             if user.language == "ru":
                 alert_msg.append(i18n.get("alerts-rub-header"))
                 alert_msg.append("")
-                alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{rub_alerts['above'].threshold:.2f}⁩" if "above" in rub_alerts and rub_alerts['above'].is_active else i18n.get("alerts-not-set")))
-                alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{rub_alerts['below'].threshold:.2f}⁩" if "below" in rub_alerts and rub_alerts['below'].is_active else i18n.get("alerts-not-set")))
+                alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{format_crypto_price(float(rub_alerts['above'].threshold))}⁩" if "above" in rub_alerts and rub_alerts['above'].is_active else i18n.get("alerts-not-set")))
+                alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{format_crypto_price(float(rub_alerts['below'].threshold))}⁩" if "below" in rub_alerts and rub_alerts['below'].is_active else i18n.get("alerts-not-set")))
                 alert_msg.append("")
         
             # Формируем итоговое сообщение
@@ -362,7 +363,7 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
         message = i18n.get("select-currency-type")
         await callback.message.edit_text(
             message + "\n\n" +
-            i18n.get("alerts-current-price")+f"\n{current_price_usd:.2f} $⁨\n{current_price_rub:.2f} ₽⁩",
+            i18n.get("alerts-current-price")+f"\n{format_crypto_price(current_price_usd)} $⁨\n{format_crypto_price(current_price_rub)} ₽⁩",
             reply_markup=keyboard
         )
         
@@ -432,9 +433,9 @@ async def handle_currency_type_selection(callback: CallbackQuery, state: FSMCont
             
             # Format price based on selected currency type
             if currency_type.lower() == "usd":
-                price_display = f"{current_price_usd:.2f} $"
+                price_display = f"{format_crypto_price(current_price_usd)} $"
             else:
-                price_display = f"{current_price_rub:.2f} ₽"
+                price_display = f"{format_crypto_price(current_price_rub)} ₽"
             
             # Show message with current price and threshold input prompt
             try:
@@ -882,8 +883,6 @@ async def check_alert_conditions(bot, i18n):
                 .join(UserCurrency, Alert.user_currency_id == UserCurrency.id)
                 .join(User, UserCurrency.user_id == User.id)
                 .where(Alert.is_active == True)
-                .where(Alert.last_triggered_at.is_(None) | 
-                       (datetime.utcnow() - Alert.last_triggered_at > timedelta(minutes=5)))
             )
             alerts = result.all()
             
@@ -911,8 +910,8 @@ async def check_alert_conditions(bot, i18n):
                     # Проверяем условие
                     condition_met = False
                     logger.info(f"Checking alert {alert.id} for {user_currency.currency}:")
-                    logger.info(f"Current price: {price_in_currency} {alert.currency_type.upper()}")
-                    logger.info(f"Threshold: {threshold_in_currency} {alert.currency_type.upper()}")
+                    logger.info(f"Current price: {format_crypto_price(price_in_currency)} {alert.currency_type.upper()}")
+                    logger.info(f"Threshold: {format_crypto_price(threshold_in_currency)} {alert.currency_type.upper()}")
                     logger.info(f"Condition: {alert.condition_type}")
                     logger.info(f"Last triggered: {alert.last_triggered_at}")
                     
@@ -929,8 +928,8 @@ async def check_alert_conditions(bot, i18n):
                         direction = i18n.get("alert-price-above") if alert.condition_type == 'above' else i18n.get("alert-price-below")
                         message = (
                             f"🔔 {user_currency.currency}\n"+
-                            i18n.get("alert-price")+f" {direction} {alert.threshold:.2f} {currency_symbol}\n"+
-                            i18n.get("alerts-current-price")+f" {price_in_currency:.2f} {currency_symbol}"
+                            i18n.get("alert-price")+f" {direction} {format_crypto_price(alert.threshold)} {currency_symbol}\n"+
+                            i18n.get("alerts-current-price")+f" {format_crypto_price(price_in_currency)} {currency_symbol}"
                         )
                         
                         # Создаем клавиатуру для установки нового порога

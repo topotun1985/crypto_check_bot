@@ -3,7 +3,8 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from fluentogram import TranslatorRunner
 from database.database import get_db
-from config import CRYPTO_NAMES, AVAILABLE_CRYPTOCURRENCIES 
+from config import CRYPTO_NAMES, AVAILABLE_CRYPTOCURRENCIES
+from utils.format_helpers import format_crypto_price
 from database.queries import (
     get_user_currencies,
     add_user_currency,
@@ -28,12 +29,12 @@ async def format_currency_rate(rate, dollar_rate, show_in_rub: bool, i18n: Trans
         return i18n.get("rate-format-rub",
                        name=crypto_name,
                        symbol=rate.currency,
-                       price=f"{price_rub:,.2f}")
+                       price=format_crypto_price(price_rub))
     else:
         return i18n.get("rate-format-usd",
                        name=crypto_name,
                        symbol=rate.currency,
-                       price=f"{float(rate.price):,.2f}")
+                       price=format_crypto_price(float(rate.price)))
 
 @my_currencies_router.callback_query(F.data == "show_my_currencies")
 async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, show_in_rub: bool = True):
