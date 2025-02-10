@@ -111,6 +111,7 @@ async def reset_expired_subscriptions(session: AsyncSession):
     users_to_update = result.scalars().all()
 
     for user_id in users_to_update:
+        # Получаем все валюты пользователя, отсортированные по дате создания
         result = await session.execute(
             select(UserCurrency)
             .where(UserCurrency.user_id == user_id)
@@ -118,9 +119,21 @@ async def reset_expired_subscriptions(session: AsyncSession):
         )
         currencies = result.scalars().all()
         
-        # Оставляем только самые старые валюты в пределах лимита
-        for currency in currencies[free_limit:]:
-            await session.delete(currency)
+        # Определяем валюты для удаления (все кроме первых free_limit)
+        currencies_to_delete = currencies[free_limit:]
+        if currencies_to_delete:
+            # Получаем их ID для удаления связанных алертов
+            currency_ids = [c.id for c in currencies_to_delete]
+            
+            # Сначала удаляем алерты для этих валют
+            await session.execute(
+                delete(Alert)
+                .where(Alert.user_currency_id.in_(currency_ids))
+            )
+            
+            # Затем удаляем сами валюты
+            for currency in currencies_to_delete:
+                await session.delete(currency)
 
     await session.commit()
 
@@ -198,22 +211,78 @@ async def add_user_currency(session: AsyncSession, telegram_id: int, currency: s
     await session.commit()
     return currency_obj
 
+# ------------------------------------------
+
+# async def remove_user_currency(session: AsyncSession, telegram_id: int, currency: str):
+#     """Удаляет валюту из отслеживаемых."""
+#     user = await get_user(session, telegram_id)
+#     if not user:
+#         return
+        
+#     # Удаляем валюту
+#     await session.execute(
+#         delete(UserCurrency)
+#         .where(
+#             UserCurrency.user_id == user.id,
+#             UserCurrency.currency == currency
+#         )
+#     )
+#     await session.commit()
+
+# --------------------------------------------
+
 async def remove_user_currency(session: AsyncSession, telegram_id: int, currency: str):
     """Удаляет валюту из отслеживаемых."""
     user = await get_user(session, telegram_id)
     if not user:
+        print("Пользователь не найден")
         return
-        
-    # Удаляем валюту
-    await session.execute(
-        delete(UserCurrency)
-        .where(
+    
+    # Получаем запись UserCurrency
+    result = await session.execute(
+        select(UserCurrency).where(
             UserCurrency.user_id == user.id,
             UserCurrency.currency == currency
         )
     )
+    user_currency = result.scalars().first()
+    
+    if not user_currency:
+        print("Валюта не найдена у пользователя")
+        return  
+
+    print(f"Удаляем валюту {currency} с ID {user_currency.id}")
+
+    # Проверяем, есть ли связанные алерты
+    alerts_check = await session.execute(
+        select(Alert.id, Alert.user_currency_id).where(Alert.user_currency_id == user_currency.id)
+    )
+    alerts_data = alerts_check.fetchall()
+    print(f"Связанные алерты перед удалением: {alerts_data}")
+
+    # Принудительно удаляем алерты
+    await session.execute(
+        delete(Alert).where(Alert.user_currency_id == user_currency.id)
+    )
+    await session.flush()
     await session.commit()
 
+    # Проверяем, удались ли алерты
+    alerts_left = await session.execute(
+        select(Alert).where(Alert.user_currency_id == user_currency.id)
+    )
+    print(f"После удаления алертов осталось: {len(alerts_left.scalars().all())}")
+
+    # Удаляем запись UserCurrency
+    await session.execute(
+        delete(UserCurrency).where(UserCurrency.id == user_currency.id)
+    )
+    await session.flush()
+    await session.commit()
+    
+    print(f"Валюта {currency} удалена успешно!")
+
+# --------------------------------------------
 
 async def add_alert(session: AsyncSession, user_id: int, user_currency_id: int, threshold: float, 
                    condition_type: str, currency_type: str):

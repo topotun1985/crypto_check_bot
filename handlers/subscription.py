@@ -108,7 +108,7 @@ async def process_buy_subscription(callback: CallbackQuery, i18n: TranslatorRunn
 
 
 @subscription_router.pre_checkout_query()
-async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery, i18n: TranslatorRunner):
     """Подтверждает оплату"""
     try:
         await pre_checkout_query.answer(ok=True)
@@ -116,7 +116,7 @@ async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
         logging.error(f"Pre-checkout error: {e}")
         await pre_checkout_query.answer(
             ok=False,
-            error_message="Произошла ошибка. Попробуйте позже."
+            error_message=i18n.get("alerts-error")
         )
 
 

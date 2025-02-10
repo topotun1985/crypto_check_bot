@@ -31,10 +31,12 @@ from .start import back_to_menu  # Для правильной навигаци�
 logger = logging.getLogger(__name__)
 notification_router = Router()
 
+
 class NotificationStates(StatesGroup):
     CHOOSING_CURRENCY = State()
     CHOOSING_CURRENCY_TYPE = State()  # USD or RUB
     ENTERING_THRESHOLD = State()
+
 
 def get_notification_keyboard(currencies_with_alerts, i18n):
     builder = InlineKeyboardBuilder()
@@ -53,6 +55,7 @@ def get_notification_keyboard(currencies_with_alerts, i18n):
     builder.button(text=i18n.get("btn-back"), callback_data="back_to_main")
     builder.adjust(columns)
     return builder.as_markup()
+
 
 def get_currency_settings_keyboard(currency_id: int, has_active_alerts: bool, i18n: TranslatorRunner):
     builder = InlineKeyboardBuilder()
@@ -88,7 +91,6 @@ def get_currency_settings_keyboard(currency_id: int, has_active_alerts: bool, i1
     # Располагаем кнопки в столбик
     builder.adjust(1)
     return builder.as_markup()
-
 
 
 @notification_router.callback_query(F.data == "notification_settings")
@@ -137,7 +139,7 @@ async def show_notification_menu(callback: CallbackQuery, i18n: TranslatorRunner
             keyboard = get_notification_keyboard(currencies_with_alerts, i18n)
             
             await callback.message.edit_text(
-                i18n.get("choose-currency-for-notifications"),
+                i18n.get("alerts-choose-currency"),
                 reply_markup=keyboard
             )
     except Exception as e:
@@ -149,6 +151,7 @@ async def show_notification_menu(callback: CallbackQuery, i18n: TranslatorRunner
                 callback_data="back_to_main"
             ).as_markup()
         )
+
 
 @notification_router.callback_query(F.data.startswith("alert_currency_"))
 async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner, currency_id: int = None):
@@ -198,24 +201,24 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
             # Формируем сообщение о цене
             price_msg = []
             if crypto_rate:
-                price_msg.append(f"🔔 Настройки уведомлений для ❨{currency.currency}❩")
+                price_msg.append(i18n.get("alerts-list-header", currency=currency.currency))
                 price_msg.append("")
                 if user.language == "ru" and dollar_rate:
                     price_rub = crypto_rate.price * dollar_rate.price
-                    price_msg.append(f"Текущая цена:\n{crypto_rate.price:.2f} $⁨\n{price_rub:.2f} ₽⁩")
+                    price_msg.append(i18n.get("alerts-current-price")+f"\n{crypto_rate.price:.2f} $⁨\n{price_rub:.2f} ₽⁩")
                     price_msg.append("")
                 else:
-                    price_msg.append(f"Текущая цена: {crypto_rate.price:.2f} $⁨")
+                    price_msg.append(i18n.get("alerts-current-price")+f" {crypto_rate.price:.2f} $⁨")
                     price_msg.append("")
             
             # Формируем сообщение об алертах
             alert_msg = []
-            alert_msg.append("Текущие настройки:")
+            alert_msg.append(i18n.get("alerts-current-settings"))
             alert_msg.append("")
             
             # Проверяем есть ли активные алерты
             has_active_alerts = any(alert.is_active for alert in all_alerts)
-            alert_msg.append("✅ Уведомления включены" if has_active_alerts else "❌ Уведомления отключены")
+            alert_msg.append(i18n.get("alerts-notifications-enabled") if has_active_alerts else i18n.get("alerts-notifications-disabled"))
             alert_msg.append("")
             
             # Группируем алерты по валюте (учитываем регистр)
@@ -223,18 +226,18 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
             rub_alerts = {alert.condition_type: alert for alert in all_alerts if alert.currency_type.upper() == "RUB"}
             
             # Показываем USD алерты
-            alert_msg.append("Пороговые значения в USD:")
+            alert_msg.append(i18n.get("alerts-usd-header"))
             alert_msg.append("")
-            alert_msg.append("⬆️ Выше " + (f"⁨{usd_alerts['above'].threshold:.2f}⁩" if "above" in usd_alerts and usd_alerts['above'].is_active else "не установлен"))
-            alert_msg.append("⬇️ Ниже " + (f"⁨{usd_alerts['below'].threshold:.2f}⁩" if "below" in usd_alerts and usd_alerts['below'].is_active else "не установлен"))
+            alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{usd_alerts['above'].threshold:.2f}⁩" if "above" in usd_alerts and usd_alerts['above'].is_active else i18n.get("alerts-not-set")))
+            alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{usd_alerts['below'].threshold:.2f}⁩" if "below" in usd_alerts and usd_alerts['below'].is_active else i18n.get("alerts-not-set")))
             alert_msg.append("")
             
             # Показываем RUB алерты только для русскоязычных пользователей
             if user.language == "ru":
-                alert_msg.append("Пороговые значения RUB:")
+                alert_msg.append(i18n.get("alerts-rub-header"))
                 alert_msg.append("")
-                alert_msg.append("⬆️ Выше " + (f"⁨{rub_alerts['above'].threshold:.2f}⁩" if "above" in rub_alerts and rub_alerts['above'].is_active else "не установлен"))
-                alert_msg.append("⬇️ Ниже " + (f"⁨{rub_alerts['below'].threshold:.2f}⁩" if "below" in rub_alerts and rub_alerts['below'].is_active else "не установлен"))
+                alert_msg.append(i18n.get("alerts-threshold-above") + " " + (f"⁨{rub_alerts['above'].threshold:.2f}⁩" if "above" in rub_alerts and rub_alerts['above'].is_active else i18n.get("alerts-not-set")))
+                alert_msg.append(i18n.get("alerts-threshold-below") + " " + (f"⁨{rub_alerts['below'].threshold:.2f}⁩" if "below" in rub_alerts and rub_alerts['below'].is_active else i18n.get("alerts-not-set")))
                 alert_msg.append("")
         
             # Формируем итоговое сообщение
@@ -293,6 +296,7 @@ def get_currency_type_keyboard(i18n: TranslatorRunner, currency_id: int, conditi
     builder.adjust(1)
     return builder.as_markup()
 
+
 def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str, currency_type: str) -> InlineKeyboardMarkup:
     """Create keyboard for threshold input with back button."""
     builder = InlineKeyboardBuilder()
@@ -306,6 +310,7 @@ def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condi
     # Arrange buttons in a column
     builder.adjust(1)
     return builder.as_markup()
+
 
 @notification_router.callback_query(F.data.startswith(("set_threshold_above_", "set_threshold_below_")))
 async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
@@ -335,7 +340,7 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
             )
             row = result.first()
             if not row:
-                await callback.answer(i18n.get("currency-not-found") or "Currency not found")
+                await callback.answer(i18n.get("currency-not-found"))
                 return
             
             user, user_currency = row
@@ -343,7 +348,7 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
             # Get crypto rate
             crypto_rate = await get_crypto_rate(session, user_currency.currency)
             if not crypto_rate:
-                await callback.answer(i18n.get("rate-not-found") or "Rate not found")
+                await callback.answer(i18n.get("rate-not-found"))
                 return
             
             # Get dollar rate
@@ -354,23 +359,22 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
             current_price_rub = current_price_usd * dollar_rate.price if dollar_rate else 0
         
         # Show message with current price and currency type selection
-        message = i18n.get("select-currency-type") or "Выберите валюту для порога:"
+        message = i18n.get("select-currency-type")
         await callback.message.edit_text(
             message + "\n\n" +
-            f"Текущая цена:\n{current_price_usd:.2f} $⁨\n{current_price_rub:.2f} ₽⁩",
+            i18n.get("alerts-current-price")+f"\n{current_price_usd:.2f} $⁨\n{current_price_rub:.2f} ₽⁩",
             reply_markup=keyboard
         )
         
     except Exception as e:
         logger.error(f"Error in handle_set_threshold: {str(e)}", exc_info=True)
         await callback.message.edit_text(
-            i18n.get("error-occurred") or "An error occurred",
+            i18n.get("error-occurred"),
             reply_markup=InlineKeyboardBuilder().button(
                 text=i18n.get("btn-back"),
                 callback_data="back_to_currencies"
             ).as_markup()
         )
-
 
 
 @notification_router.callback_query(F.data.startswith("set_currency_type_"))
@@ -408,7 +412,7 @@ async def handle_currency_type_selection(callback: CallbackQuery, state: FSMCont
             )
             row = result.first()
             if not row:
-                await callback.answer(i18n.get("currency-not-found") or "Currency not found")
+                await callback.answer(i18n.get("currency-not-found"))
                 return
             
             user, user_currency = row
@@ -416,7 +420,7 @@ async def handle_currency_type_selection(callback: CallbackQuery, state: FSMCont
             # Get crypto rate
             crypto_rate = await get_crypto_rate(session, user_currency.currency)
             if not crypto_rate:
-                await callback.answer(i18n.get("rate-not-found") or "Rate not found")
+                await callback.answer(i18n.get("rate-not-found"))
                 return
             
             # Get dollar rate
@@ -428,15 +432,15 @@ async def handle_currency_type_selection(callback: CallbackQuery, state: FSMCont
             
             # Format price based on selected currency type
             if currency_type.lower() == "usd":
-                price_display = f"${current_price_usd:.2f}"
+                price_display = f"{current_price_usd:.2f} $"
             else:
-                price_display = f"₽{current_price_rub:.2f}"
+                price_display = f"{current_price_rub:.2f} ₽"
             
             # Show message with current price and threshold input prompt
             try:
                 await callback.message.edit_text(
                     i18n.get("enter-threshold-value") + "\n\n" +
-                    f"Текущая цена: ⁨{price_display}⁩",
+                    i18n.get("alerts-current-price")+f" ⁨ {price_display} ⁩",
                     reply_markup=keyboard
                 )
             except TelegramBadRequest as e:
@@ -447,13 +451,14 @@ async def handle_currency_type_selection(callback: CallbackQuery, state: FSMCont
     except Exception as e:
         logger.error(f"Error in handle_currency_type_selection: {str(e)}", exc_info=True)
         await callback.message.edit_text(
-            i18n.get("error-occurred") or "An error occurred",
+            i18n.get("error-occurred"),
             reply_markup=InlineKeyboardBuilder().button(
                 text=i18n.get("btn-back"),
                 callback_data=f"set_threshold_{currency_id}_{condition_type}"
             ).as_markup()
         )
         await state.clear()
+
 
 @notification_router.message(NotificationStates.ENTERING_THRESHOLD)
 async def handle_threshold_input(message: Message, state: FSMContext, i18n: TranslatorRunner):
@@ -606,19 +611,21 @@ async def handle_threshold_input(message: Message, state: FSMContext, i18n: Tran
             ).as_markup()
         
         await message.answer(
-            i18n.get("invalid-threshold-value") or "Invalid threshold value",
+            i18n.get("invalid-threshold-value"),
             reply_markup=keyboard
         )
     except Exception as e:
         logger.error(f"Error in handle_threshold_input: {str(e)}", exc_info=True)
         await message.answer(
-            i18n.get("error-occurred") or "An error occurred",
+            i18n.get("error-occurred"),
             reply_markup=InlineKeyboardBuilder().button(
                 text=i18n.get("btn-back") or "Back",
                 callback_data="back_to_main"
             ).as_markup()
         )
         await state.clear()
+
+
 @notification_router.callback_query(F.data == "delete_alerts")
 async def delete_currency_alerts(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     """Delete all alerts for the current currency"""
@@ -634,11 +641,13 @@ async def delete_currency_alerts(callback: CallbackQuery, state: FSMContext, i18
 async def back_to_main(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     await state.clear()
     await back_to_menu(callback, i18n)
+
     
 @notification_router.callback_query(F.data == "back_to_currencies")
 async def back_to_currencies(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     await state.clear()
     await show_notification_menu(callback, i18n)
+
 
 @notification_router.callback_query(F.data.startswith("back_to_settings_"))
 async def back_to_settings(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
@@ -654,12 +663,13 @@ async def back_to_settings(callback: CallbackQuery, state: FSMContext, i18n: Tra
     except Exception as e:
         logger.error(f"Error in back_to_settings: {str(e)}", exc_info=True)
         await callback.message.edit_text(
-            i18n.get("error-occurred") or "An error occurred",
+            i18n.get("error-occurred"),
             reply_markup=InlineKeyboardBuilder().button(
                 text=i18n.get("btn-back"),
                 callback_data="back_to_main"
             ).as_markup()
         )
+
 
 @notification_router.callback_query(F.data.startswith("back_to_condition_"))
 async def back_to_condition(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
@@ -673,7 +683,7 @@ async def back_to_condition(callback: CallbackQuery, state: FSMContext, i18n: Tr
         
         # Show condition selection keyboard with back button
         keyboard = get_condition_keyboard(i18n, currency_id)
-        message = i18n.get("select-condition") or "Выберите условие для уведомления:"
+        message = i18n.get("select-condition")
         await callback.message.edit_text(
             message,
             reply_markup=keyboard
@@ -681,13 +691,12 @@ async def back_to_condition(callback: CallbackQuery, state: FSMContext, i18n: Tr
     except Exception as e:
         logger.error(f"Error in back_to_condition: {str(e)}", exc_info=True)
         await callback.message.edit_text(
-            i18n.get("error-occurred") or "An error occurred",
+            i18n.get("error-occurred"),
             reply_markup=InlineKeyboardBuilder().button(
                 text=i18n.get("btn-back"),
                 callback_data="back_to_main"
             ).as_markup()
         )
-
 
 
 @notification_router.callback_query(F.data.startswith("set_new_threshold_"))
@@ -748,7 +757,7 @@ async def handle_disable_alert(callback: CallbackQuery, state: FSMContext, i18n:
             currency_id = int(callback.data.split("_")[2])
         except (ValueError, IndexError):
             logger.error(f"Invalid callback data format: {callback.data}")
-            await callback.answer(i18n.get("error-occurred") or "An error occurred")
+            await callback.answer(i18n.get("error-occurred"))
             return
         
         async with get_db() as session:
@@ -762,7 +771,7 @@ async def handle_disable_alert(callback: CallbackQuery, state: FSMContext, i18n:
             row = result.first()
             if not row:
                 logger.error(f"Currency not found: {currency_id} for user {callback.from_user.id}")
-                await callback.answer(i18n.get("currency-not-found") or "Currency not found")
+                await callback.answer(i18n.get("currency-not-found"))
                 return
             
             user, user_currency = row
@@ -776,7 +785,7 @@ async def handle_disable_alert(callback: CallbackQuery, state: FSMContext, i18n:
             
             if not alerts:
                 logger.warning(f"No alerts found for currency {currency_id}")
-                await callback.answer(i18n.get("no-alerts-to-disable") or "No alerts to disable")
+                await callback.answer(i18n.get("no-alerts-to-disable"))
                 return
             
             # Disable all alerts for this currency
@@ -797,7 +806,7 @@ async def handle_disable_alert(callback: CallbackQuery, state: FSMContext, i18n:
             
     except Exception as e:
         logger.error(f"Error in handle_disable_alert: {str(e)}", exc_info=True)
-        await callback.answer(i18n.get("error-occurred") or "An error occurred")
+        await callback.answer(i18n.get("error-occurred"))
         await state.clear()
 
 
@@ -917,11 +926,11 @@ async def check_alert_conditions(bot, i18n):
                     if condition_met:
                         # Формируем сообщение
                         currency_symbol = 'RUB' if alert.currency_type.upper() == 'RUB' else 'USD'
-                        direction = '⬆️ превысила' if alert.condition_type == 'above' else '⬇️ опустилась ниже'
+                        direction = i18n.get("alert-price-above") if alert.condition_type == 'above' else i18n.get("alert-price-below")
                         message = (
-                            f"🔔 {user_currency.currency}\n"
-                            f"Цена {direction} {alert.threshold:.2f} {currency_symbol}\n"
-                            f"Текущая цена: {price_in_currency:.2f} {currency_symbol}"
+                            f"🔔 {user_currency.currency}\n"+
+                            i18n.get("alert-price")+f" {direction} {alert.threshold:.2f} {currency_symbol}\n"+
+                            i18n.get("alerts-current-price")+f" {price_in_currency:.2f} {currency_symbol}"
                         )
                         
                         # Создаем клавиатуру для установки нового порога
