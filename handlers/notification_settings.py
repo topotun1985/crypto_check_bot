@@ -26,7 +26,7 @@ from database.queries import (
     get_dollar_rate
 )
 from keyboards.inline import get_new_alert_keyboard, get_threshold_input_keyboard, get_alert_settings_keyboard
-from utils.format_helpers import format_crypto_price
+from utils.format_helpers import format_crypto_price, validate_threshold
 from .start import back_to_menu  # Для правильной навигации
 
 logger = logging.getLogger(__name__)
@@ -484,15 +484,20 @@ async def handle_threshold_input(message: Message, state: FSMContext, i18n: Tran
             await state.clear()
             return
         
-        # Parse threshold value
         try:
-            threshold = float(message.text)
-            if threshold <= 0:
-                raise ValueError("Threshold must be positive")
-        except ValueError:
+            # Validate threshold value
+            threshold, error = validate_threshold(message.text, i18n)
+            if error:
+                await message.answer(
+                    error,
+                    reply_markup=get_threshold_input_keyboard(i18n, currency_id, condition_type, currency_type)
+                )
+                return
+        except Exception as e:
+            logger.error(f"Error validating threshold: {str(e)}")
             await message.answer(
-                i18n.get("invalid-threshold-value"),
-                reply_markup=get_threshold_input_keyboard(i18n, currency_id, condition_type, currency_type).as_markup()
+                i18n.get("error-threshold-invalid-format"),
+                reply_markup=get_threshold_input_keyboard(i18n, currency_id, condition_type, currency_type)
             )
             return
         
