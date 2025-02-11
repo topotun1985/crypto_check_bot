@@ -14,7 +14,10 @@ SUBSCRIPTION_LIMITS = {
 }
 
 async def add_user(session: AsyncSession, telegram_id: int, username: str, language_code: str = None):
-    """Добавляет нового пользователя в базу."""
+    """Добавляет нового пользователя в базу.
+    
+    Note: Сессия должна быть получена с правильным шардом на основе telegram_id
+    """
     new_user = User(
         telegram_id=telegram_id, 
         username=username,
@@ -25,7 +28,10 @@ async def add_user(session: AsyncSession, telegram_id: int, username: str, langu
     await add_subscription(session, telegram_id, "free")  
 
 async def get_user(session: AsyncSession, telegram_id: int):
-    """Получает пользователя по telegram_id."""
+    """Получает пользователя по telegram_id.
+    
+    Note: Сессия должна быть получена с правильным шардом на основе telegram_id
+    """
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     return result.scalars().first()
 

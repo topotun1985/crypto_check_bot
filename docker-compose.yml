@@ -16,6 +16,8 @@ services:
       - ./bot.py:/app/bot.py
       - ./database:/app/database
       - ./requirements.txt:/app/requirements.txt
+      - ./alembic:/app/alembic
+      - ./scripts:/app/scripts
     depends_on:
       db:
         condition: service_healthy
@@ -31,7 +33,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_MULTIPLE_DATABASES: crypto_bot_shard_0,crypto_bot_shard_1
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -40,6 +42,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
+      - ./init-shards.sh:/docker-entrypoint-initdb.d/init-shards.sh
       - pgdata:/var/lib/postgresql/data
 
   redis:

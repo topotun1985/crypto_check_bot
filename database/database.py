@@ -17,36 +17,48 @@ DB_NAME = os.getenv("POSTGRES_DB", "crypto_bot")
 DB_HOST = os.getenv("POSTGRES_HOST", "db")  # используем имя сервиса из docker-compose
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 
-# Формируем URL для подключения
-DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+from .sharding import ShardManager
 
-logger.info(f"Using database URL: {DATABASE_URL}")
+# Инициализируем менеджер шардов
+shard_manager = ShardManager()
 
-# Создаём движок и сессию
-try:
-    engine = create_async_engine(DATABASE_URL, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    logger.info("Successfully created database engine")
-except Exception as e:
-    logger.error(f"Failed to create database engine: {e}")
-    raise
+# Создаём фабрику сессий
+def create_session_factory(engine):
+    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# Словарь для хранения фабрик сессий для каждого шарда
+session_factories = {}
 
 # Функция для создания таблиц в БД
 async def create_db_and_tables():
     try:
-        logger.info("Starting to create database tables...")
-        async with engine.begin() as conn:
-            logger.info("Creating database tables...")
-            await conn.run_sync(Base.metadata.create_all)
-            logger.info("Database tables created successfully")
+        logger.info("Starting to create database tables in all shards...")
+        for shard_id in range(shard_manager.shard_count):
+            engine = await shard_manager.get_engine(shard_id)
+            if engine is None:
+                raise Exception(f"Failed to get engine for shard {shard_id}")
+                
+            async with engine.begin() as conn:
+                logger.info(f"Creating database tables in shard {shard_id}...")
+                await conn.run_sync(Base.metadata.create_all)
+                logger.info(f"Database tables created successfully in shard {shard_id}")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
         raise
 
 @asynccontextmanager
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Получение сессии базы данных."""
-    async with async_session() as session:
+async def get_db(user_id: int = None) -> AsyncGenerator[AsyncSession, None]:
+    """Получение сессии базы данных для конкретного шарда.
+    Если user_id не указан, используется шард по умолчанию (0)."""
+    shard_id = shard_manager.get_shard_key(user_id) if user_id is not None else 0
+    
+    if shard_id not in session_factories:
+        engine = await shard_manager.get_engine(shard_id)
+        if engine is None:
+            raise Exception(f"Failed to get engine for shard {shard_id}")
+        session_factories[shard_id] = create_session_factory(engine)
+    
+    async with session_factories[shard_id]() as session:
         try:
             yield session
             await session.commit()

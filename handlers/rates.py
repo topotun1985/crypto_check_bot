@@ -27,7 +27,8 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_i
     """Показывает все курсы криптовалют."""
     try:
         redis_cache = RedisCache()
-        async with get_db() as session:
+        # Используем telegram_id для определения шарда
+        async with get_db(user_id=callback.from_user.id) as session:
             user = await get_user(session, callback.from_user.id)
             # Для не русских пользователей всегда показываем в USD
             if user.language != "ru":

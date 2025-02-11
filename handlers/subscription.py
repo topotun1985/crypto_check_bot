@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
     """Отображает текущее состояние подписки и предлагает покупку."""
-    async with get_db() as session:
+    user_id = message_or_callback.from_user.id
+    async with get_db(user_id=user_id) as session:
         user_id = message_or_callback.from_user.id
         subscription = await get_user_subscription(session, user_id)
         plan = subscription.plan if subscription else "free"
@@ -75,7 +76,8 @@ async def subscription_callback(callback: CallbackQuery, i18n: TranslatorRunner)
 async def process_buy_subscription(callback: CallbackQuery, i18n: TranslatorRunner):
     """Обрабатывает нажатие на кнопку покупки тарифа через Telegram Stars"""
     plan = callback.data.split("_")[1]  # basic, standard, premium
-    async with get_db() as session:
+    user_id = callback.from_user.id
+    async with get_db(user_id=user_id) as session:
         user_id = callback.from_user.id
         subscription = await get_user_subscription(session, user_id)
         now = datetime.utcnow()
