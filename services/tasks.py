@@ -3,6 +3,7 @@ import logging
 from config import AVAILABLE_CRYPTOCURRENCIES
 from services.binance_api import CryptoService
 from services.cmc_api import FiatService
+from services.redis_cache import RedisCache
 from database.database import get_db
 from database.queries import update_crypto_rate, update_dollar_rate, reset_expired_subscriptions
 from handlers.notification_settings import check_alert_conditions
@@ -13,6 +14,7 @@ class BackgroundTasks:
     def __init__(self, bot=None):
         self.crypto_service = CryptoService()
         self.fiat_service = FiatService()
+        self.redis_cache = RedisCache()
         self.is_running = False
         self.bot = bot
         self.i18n = None
@@ -31,24 +33,45 @@ class BackgroundTasks:
     async def update_crypto_prices(self):
         """Обновление цен криптовалют (раз в минуту)"""
         while self.is_running:
-            async with get_db() as session:
+            try:
+                # Получаем все курсы за один проход
+                rates = {}
                 for symbol in AVAILABLE_CRYPTOCURRENCIES:
                     try:
-                        price = await self.crypto_service.get_binance_price(symbol)
-                        if price is not None:
-                            await update_crypto_rate(session, symbol, price)
+                        if price := await self.crypto_service.get_binance_price(symbol):
+                            rates[symbol] = price
                             logger.info(f"{symbol}: {price} USDT")
                     except Exception as e:
-                        logger.error(f"Ошибка обновления {symbol}: {e}")
+                        logger.error(f"Ошибка получения курса {symbol}: {e}")
+
+                if rates:
+                    # Сохраняем в Redis
+                    await self.redis_cache.set_crypto_rates(rates)
+                    
+                    # Сохраняем в БД
+                    async with get_db() as session:
+                        for symbol, price in rates.items():
+                            await update_crypto_rate(session, symbol, price)
+                        
+                        # Проверяем алерты после обновления всех курсов
+                        if self.bot and self.i18n:
+                            await check_alert_conditions(self.bot, self.i18n)
+                            
+            except Exception as e:
+                logger.error(f"Ошибка при обновлении курсов: {e}")
+                
             await asyncio.sleep(60)
 
     async def update_usd_rate(self):
         """Обновление курса USD/RUB (раз в 10 минут)"""
         while self.is_running:
             try:
-                async with get_db() as session:
-                    rate = await self.fiat_service.get_usd_rate()
-                    if rate is not None:
+                if rate := await self.fiat_service.get_usd_rate():
+                    # Сохраняем в Redis
+                    await self.redis_cache.set_dollar_rate(rate)
+                    
+                    # Сохраняем в БД
+                    async with get_db() as session:
                         await update_dollar_rate(session, rate)
                         logger.info(f"USD/RUB: {rate}")
             except Exception as e:
