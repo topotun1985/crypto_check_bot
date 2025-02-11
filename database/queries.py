@@ -1,8 +1,11 @@
+import logging
 from math import exp
 from fluentogram import TranslatorRunner
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User, Subscription, Alert, UserCurrency, CryptoRate, DollarRate
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 
 # Константы для максимального количества валют по тарифам
@@ -32,8 +35,14 @@ async def get_user(session: AsyncSession, telegram_id: int):
     
     Note: Сессия должна быть получена с правильным шардом на основе telegram_id
     """
+    logger.info(f"Getting user with telegram_id: {telegram_id}")
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
-    return result.scalars().first()
+    user = result.scalars().first()
+    if user:
+        logger.info(f"Found user with id: {user.id} for telegram_id: {telegram_id}")
+    else:
+        logger.info(f"User not found for telegram_id: {telegram_id}")
+    return user
 
 
 async def update_user_last_activity(session: AsyncSession, telegram_id: int):
@@ -173,15 +182,22 @@ async def get_user_currency_count(session: AsyncSession, telegram_id: int) -> in
 
 async def get_user_currencies(session: AsyncSession, telegram_id: int) -> list[UserCurrency]:
     """Получает список валют пользователя."""
+    logger.info(f"Getting currencies for telegram_id: {telegram_id}")
     user = await get_user(session, telegram_id)
     if not user:
+        logger.info(f"User not found for telegram_id: {telegram_id}")
         return []
-        
+    
+    logger.info(f"Found user with id: {user.id} for telegram_id: {telegram_id}")
     result = await session.execute(
         select(UserCurrency)
         .where(UserCurrency.user_id == user.id)
     )
-    return result.scalars().all()
+    currencies = result.scalars().all()
+    logger.info(f"Found {len(currencies)} currencies for user {user.id}")
+    for currency in currencies:
+        logger.info(f"Currency: {currency.currency}, user_id: {currency.user_id}")
+    return currencies
 
 async def add_user_currency(session: AsyncSession, telegram_id: int, currency: str):
     """Добавляет валюту для отслеживания."""

@@ -50,11 +50,15 @@ async def create_db_and_tables():
 async def get_db(user_id: int = None) -> AsyncGenerator[AsyncSession, None]:
     """Получение сессии базы данных для конкретного шарда.
     Если user_id не указан, используется шард по умолчанию (0)."""
+    logger.info(f"Getting database session for user_id: {user_id}")
     shard_id = shard_manager.get_shard_key(user_id) if user_id is not None else 0
+    logger.info(f"Using shard {shard_id} for user {user_id}")
     
     if shard_id not in session_factories:
+        logger.info(f"Creating new session factory for shard {shard_id}")
         engine = await shard_manager.get_engine(shard_id)
         if engine is None:
+            logger.error(f"Failed to get engine for shard {shard_id}")
             raise Exception(f"Failed to get engine for shard {shard_id}")
         session_factories[shard_id] = create_session_factory(engine)
     
@@ -63,5 +67,6 @@ async def get_db(user_id: int = None) -> AsyncGenerator[AsyncSession, None]:
             yield session
             await session.commit()
         except Exception as e:
+            logger.error(f"Error in database session: {str(e)}")
             await session.rollback()
             raise e

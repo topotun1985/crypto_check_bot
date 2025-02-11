@@ -11,13 +11,15 @@ from handlers.notification_settings import check_alert_conditions
 logger = logging.getLogger(__name__)
 
 class BackgroundTasks:
-    def __init__(self, bot=None):
+    def __init__(self, bot=None, notification_service=None, shard_manager=None):
         self.crypto_service = CryptoService()
         self.fiat_service = FiatService()
         self.redis_cache = RedisCache()
         self.is_running = False
         self.bot = bot
         self.i18n = None
+        self.notification_service = notification_service
+        self.shard_manager = shard_manager
 
     async def start(self):
         """Запуск фоновых задач"""
@@ -53,9 +55,7 @@ class BackgroundTasks:
                         for symbol, price in rates.items():
                             await update_crypto_rate(session, symbol, price)
                         
-                        # Проверяем алерты после обновления всех курсов
-                        if self.bot and self.i18n:
-                            await check_alert_conditions(self.bot, self.i18n)
+                        # Алерты проверяются в отдельном методе check_alerts
                             
             except Exception as e:
                 logger.error(f"Ошибка при обновлении курсов: {e}")
@@ -93,11 +93,15 @@ class BackgroundTasks:
         """Проверяет условия алертов и отправляет уведомления (раз в минуту)"""
         while self.is_running:
             try:
-                if self.i18n:
-                    await check_alert_conditions(self.bot, self.i18n)
-                    logger.info("Проверены условия алертов")
+                if self.i18n and self.notification_service and self.shard_manager:
+                    await check_alert_conditions(self.bot, self.i18n, self.notification_service, self.shard_manager)
                 else:
-                    logger.error("i18n не инициализирован для проверки алертов")
+                    if not self.i18n:
+                        logger.error("i18n не инициализирован для проверки алертов")
+                    if not self.notification_service:
+                        logger.error("notification_service не инициализирован для проверки алертов")
+                    if not self.shard_manager:
+                        logger.error("shard_manager не инициализирован для проверки алертов")
             except Exception as e:
                 logger.error(f"Ошибка при проверке алертов: {e}")
             await asyncio.sleep(60)

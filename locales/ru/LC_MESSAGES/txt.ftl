@@ -117,6 +117,9 @@ error-occurred = ❌ Произошла ошибка. Пожалуйста, по
 currency-not-found = ❌ Валюта не найдена.
 rate-not-found = ❌ Не удалось получить курс валюты.
 alerts-invalid-number = ❌ Пожалуйста, введите корректное число
+
+currency-settings-menu = Настройки уведомлений для { $currency }
+Выберите действие:исло
 error-threshold-must-be-positive = ❌ Значение должно быть больше 0
 error-threshold-invalid-format = ❌ Неверный формат числа. Используйте точку в качестве разделителя (например: 1.23)
 error-threshold-too-many-decimals-small = ❌ Слишком много знаков после точки: { $decimals }\nДля чисел меньше 1 допустимо максимум 5 знаков после точки\nПример: 0.00123

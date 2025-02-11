@@ -25,7 +25,7 @@ from database.queries import (
     get_crypto_rate,
     get_dollar_rate
 )
-from keyboards.inline import get_new_alert_keyboard, get_threshold_input_keyboard, get_alert_settings_keyboard
+from keyboards.inline import get_new_alert_keyboard, get_threshold_input_keyboard, get_currency_settings_keyboard
 from utils.format_helpers import format_crypto_price, validate_threshold
 from .start import back_to_menu  # Для правильной навигации
 
@@ -871,7 +871,7 @@ async def handle_enable_alerts(callback: CallbackQuery, state: FSMContext, i18n:
         await callback.answer(i18n.get("error-occurred"))
 
 
-async def check_alert_conditions(bot, i18n):
+async def check_alert_conditions(bot, i18n, notification_service=None, shard_manager=None):
     """Проверяет условия для алертов и отправляет уведомления."""
     async with get_db() as session:
         try:
@@ -941,14 +941,20 @@ async def check_alert_conditions(bot, i18n):
                         keyboard = get_new_alert_keyboard(i18n, alert.id, user_currency.currency)
                         
                         try:
-                            # Отправляем уведомление
-                            sent_message = await bot.send_message(
-                                user.telegram_id,
-                                message,
-                                reply_markup=keyboard
-                            )
-                            
-                            if sent_message:
+                            # Отправляем уведомление через notification_service
+                            if notification_service:
+                                await notification_service.publish_alert_notification(
+                                    user_id=user.telegram_id,
+                                    currency=user_currency.currency,
+                                    current_price=price_in_currency,
+                                    threshold=alert.threshold,
+                                    condition_type=alert.condition_type,
+                                    currency_type=alert.currency_type,
+                                    alert_id=alert.id,
+                                    currency_id=user_currency.id,
+                                    user_language=user.language
+                                )
+                                
                                 # Обновляем время последнего срабатывания
                                 alert.last_triggered_at = datetime.utcnow()
                                 alert.is_active = False  # Деактивируем алерт

@@ -40,7 +40,8 @@ async def format_currency_rate(rate, dollar_rate, show_in_rub: bool, i18n: Trans
 async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, show_in_rub: bool = True):
     """Показывает список валют пользователя."""
     try:
-        async with get_db() as session:
+        user_id = callback.from_user.id
+        async with get_db(user_id) as session:
             # Получаем валюты пользователя
             user_currencies = await get_user_currencies(session, callback.from_user.id)
             subscription = await get_user_subscription(session, callback.from_user.id)

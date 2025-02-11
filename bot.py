@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import signal
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -12,10 +13,14 @@ from database.database import create_db_and_tables, get_db
 from middlewares.i18n import TranslatorRunnerMiddleware
 from utils.i18n import create_translator_hub
 from services.tasks import BackgroundTasks
+from services.notification_service import NotificationService
+from services.alert_service import AlertService
+from database.sharding import ShardManager
 from config import BOT_COMMANDS
 from sqlalchemy import select
 from database.models import User
 from typing import Dict
+from contextlib import suppress
 
 
 load_dotenv()
@@ -77,32 +82,105 @@ async def set_bot_commands(bot: Bot, translator_hub):
 
 # Функция конфигурирования и запуска бота
 async def main():
-    bot = Bot(token=os.getenv("BOT_TOKEN"),
-              default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-    dp = Dispatcher()
-
-    # Создаем объект типа TranslatorHub
-    translator_hub: TranslatorHub = create_translator_hub()
-
-    await create_db_and_tables()
-
-    # Register all handlers
-    register_all_handlers(dp)
-
-    # Регистрируем миддлварь для i18n
-    dp.update.middleware(TranslatorRunnerMiddleware())
-
-    # Запускаем фоновые задачи
-    tasks = BackgroundTasks(bot)
-    tasks.i18n = translator_hub.get_translator_by_locale(locale='ru')
-    await tasks.start()
-
-    # Регистрируем команды бота
-    await set_bot_commands(bot, translator_hub)
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot, _translator_hub=translator_hub)
+    # Создаем объекты для хранения сервисов
+    bot = None
+    notification_service = None
+    tasks = None
+    
+    # Функция для корректного завершения работы
+    async def shutdown(signal_type=None):
+        nonlocal bot, notification_service, tasks
+        
+        logger.info(f'Received signal {signal_type}, shutting down...')
+        
+        # Останавливаем фоновые задачи
+        if tasks:
+            tasks.is_running = False
+            logger.info('Background tasks stopped')
+        
+        # Закрываем соединение с NATS
+        if notification_service:
+            with suppress(Exception):
+                await notification_service.close()
+                logger.info('NATS connection closed')
+        
+        # Закрываем сессию бота
+        if bot:
+            with suppress(Exception):
+                await bot.session.close()
+                logger.info('Bot session closed')
+        
+        # Останавливаем event loop
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        [task.cancel() for task in tasks]
+        logger.info(f'Cancelling {len(tasks)} outstanding tasks')
+        await asyncio.gather(*tasks, return_exceptions=True)
+        asyncio.get_event_loop().stop()
+        logger.info('Shutdown complete')
+    
+    try:
+        # Инициализируем бота
+        bot = Bot(token=os.getenv("BOT_TOKEN"),
+                  default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        
+        dp = Dispatcher()
+        
+        # Создаем объект типа TranslatorHub
+        translator_hub: TranslatorHub = create_translator_hub()
+        
+        await create_db_and_tables()
+        
+        # Register all handlers
+        register_all_handlers(dp)
+        
+        # Регистрируем миддлварь для i18n
+        dp.update.middleware(TranslatorRunnerMiddleware())
+        
+        # Создаем сервисы
+        notification_service = NotificationService(
+            bot=bot,
+            translator_hub=translator_hub,
+            nats_url=os.getenv("NATS_URL", "nats://nats:4222")
+        )
+        shard_manager = ShardManager()
+        
+        # Запускаем фоновые задачи
+        tasks = BackgroundTasks(
+            bot=bot,
+            notification_service=notification_service,
+            shard_manager=shard_manager
+        )
+        tasks.i18n = translator_hub.get_translator_by_locale(locale='ru')
+        
+        # Подключаемся к NATS
+        try:
+            await notification_service.connect()
+            logger.info("Successfully connected to NATS")
+        except Exception as e:
+            logger.error(f"Failed to connect to NATS: {e}")
+            raise
+        
+        await tasks.start()
+        
+        # Регистрируем команды бота
+        await set_bot_commands(bot, translator_hub)
+        
+        # Устанавливаем обработчики сигналов
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGABRT):
+            asyncio.get_event_loop().add_signal_handler(
+                sig,
+                lambda s=sig: asyncio.create_task(shutdown(s))
+            )
+        
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot, _translator_hub=translator_hub)
+        
+    except Exception as e:
+        logger.error(f"Critical error: {e}", exc_info=True)
+        await shutdown()
+        raise
+    finally:
+        await shutdown()
 
 
 if __name__ == "__main__":

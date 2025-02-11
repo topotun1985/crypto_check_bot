@@ -97,17 +97,17 @@ def get_choose_currency_keyboard(i18n: TranslatorRunner, user_currencies: list[s
     return keyboard.as_markup()
 
 
-def get_alerts_list_keyboard(i18n: TranslatorRunner, currency_alerts: list) -> InlineKeyboardMarkup:
+def get_notification_keyboard(currencies_with_alerts: dict, i18n: TranslatorRunner) -> InlineKeyboardMarkup:
     """Создает клавиатуру со списком валют для настройки уведомлений."""
     keyboard = InlineKeyboardBuilder()
     
     # Добавляем кнопки для каждой валюты
-    for currency, alert in currency_alerts:
+    for currency_id, data in currencies_with_alerts.items():
         # Добавляем статус уведомлений к названию валюты
-        status = "✅" if alert and alert.is_active else "☑️"
+        status = "✅" if data['has_alerts'] else "☑️"
         keyboard.button(
-            text=f"{currency.currency} {status}",
-            callback_data=f"alert_currency_{currency.id}"
+            text=f"{data['currency']} {status}",
+            callback_data=f"alert_currency_{currency_id}"
         )
     
     # Добавляем кнопку "Назад"
@@ -120,18 +120,15 @@ def get_alerts_list_keyboard(i18n: TranslatorRunner, currency_alerts: list) -> I
     return keyboard.as_markup()
 
 
-def get_alert_settings_keyboard(i18n: TranslatorRunner, currency_id: int, alerts: list[Alert] = None, user_language: str = None) -> InlineKeyboardMarkup:
+def get_currency_settings_keyboard(currency_id: int, has_active_alerts: bool, i18n: TranslatorRunner) -> InlineKeyboardMarkup:
     """Создает клавиатуру для настройки уведомлений конкретной валюты."""
     keyboard = InlineKeyboardBuilder()
-    
-    # Проверяем есть ли активные алерты
-    has_active_alerts = any(alert.is_active for alert in alerts) if alerts else False
     
     # Кнопка включения/выключения уведомлений
     if has_active_alerts:
         keyboard.button(
             text=i18n.get("button-disable-alerts"),
-            callback_data=f"disable_alert_{alerts[0].id}"
+            callback_data=f"disable_alerts_{currency_id}"
         )
     else:
         keyboard.button(
@@ -139,56 +136,20 @@ def get_alert_settings_keyboard(i18n: TranslatorRunner, currency_id: int, alerts
             callback_data=f"enable_alerts_{currency_id}"
         )
     
-    # Кнопки настройки порогов в USD
+    # Кнопки установки порогов
     keyboard.button(
         text=i18n.get("button-set-threshold-above"),
-        callback_data=f"alert_set_threshold_{currency_id}_above_usd"
+        callback_data=f"set_threshold_above_{currency_id}"
     )
     keyboard.button(
         text=i18n.get("button-set-threshold-below"),
-        callback_data=f"alert_set_threshold_{currency_id}_below_usd"
+        callback_data=f"set_threshold_below_{currency_id}"
     )
     
-    # Если пользователь русскоязычный, добавляем кнопки для RUB
-    if user_language == "ru":
-        keyboard.button(
-            text=i18n.get("button-set-threshold-above-rub"),
-            callback_data=f"alert_set_threshold_{currency_id}_above_rub"
-        )
-        keyboard.button(
-            text=i18n.get("button-set-threshold-below-rub"),
-            callback_data=f"alert_set_threshold_{currency_id}_below_rub"
-        )
-        keyboard.adjust(1, 2, 2)  # 1 кнопка в первой строке, по 2 в остальных
-    else:
-        keyboard.adjust(1, 2)  # 1 кнопка в первой строке, 2 во второй
-    
-    # Кнопка возврата к списку валют
+    # Кнопка возврата
     keyboard.button(
         text=i18n.get("btn-back"),
         callback_data="back_to_notifications"
-    )
-    keyboard.adjust(1)
-    
-    return keyboard.as_markup()
-
-
-def get_currency_choice_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str = "above") -> InlineKeyboardMarkup:
-    """Создает клавиатуру для выбора валюты порога."""
-    keyboard = InlineKeyboardBuilder()
-    
-    keyboard.button(
-        text=i18n.get("button-choose-usd"),
-        callback_data=f"alert_currency_usd_{currency_id}_{condition_type}"
-    )
-    keyboard.button(
-        text=i18n.get("button-choose-rub"),
-        callback_data=f"alert_currency_rub_{currency_id}_{condition_type}"
-    )
-    
-    keyboard.button(
-        text=i18n.get("btn-back"),
-        callback_data=f"alert_currency_{currency_id}"
     )
     
     keyboard.adjust(1)
@@ -198,38 +159,57 @@ def get_currency_choice_keyboard(i18n: TranslatorRunner, currency_id: int, condi
 def get_currency_type_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str) -> InlineKeyboardMarkup:
     """Создает клавиатуру для выбора типа валюты (USD/RUB)."""
     keyboard = InlineKeyboardBuilder()
+    
     keyboard.button(
-        text=i18n.get("button-set-threshold-usd"),
-        callback_data=f"set_currency_type_{currency_id}_{condition_type}_usd"
+        text=i18n.get("btn-usd"),
+        callback_data=f"currency_type_{currency_id}_{condition_type}_usd"
     )
     keyboard.button(
-        text=i18n.get("button-set-threshold-rub"),
-        callback_data=f"set_currency_type_{currency_id}_{condition_type}_rub"
+        text=i18n.get("btn-rub"),
+        callback_data=f"currency_type_{currency_id}_{condition_type}_rub"
     )
     keyboard.button(
         text=i18n.get("btn-back"),
-        callback_data=f"set_threshold_{currency_id}_{condition_type}"
+        callback_data=f"back_to_condition_{currency_id}"
     )
-    keyboard.adjust(1)
+    
+    keyboard.adjust(2, 1)
     return keyboard.as_markup()
+
 
 def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condition_type: str, currency_type: str) -> InlineKeyboardMarkup:
     """Создает клавиатуру для ввода порогового значения."""
     keyboard = InlineKeyboardBuilder()
     keyboard.button(
         text=i18n.get("btn-back"),
-        callback_data="back_to_condition"
+        callback_data=f"back_to_currency_type_{currency_id}_{condition_type}"
     )
     keyboard.adjust(1)
     return keyboard.as_markup()
 
 
-def get_new_alert_keyboard(i18n: TranslatorRunner, alert_id: int, currency: str) -> InlineKeyboardMarkup:
+def get_new_alert_keyboard(i18n: TranslatorRunner, alert_id: int, currency_id: int) -> InlineKeyboardMarkup:
     """Создает клавиатуру для установки нового порога после срабатывания уведомления."""
     keyboard = InlineKeyboardBuilder()
     keyboard.button(
         text=i18n.get("btn-set-new-threshold"),
-        callback_data=f"set_new_threshold_{alert_id}"
+        callback_data=f"set_new_threshold_{currency_id}_{alert_id}"
+    )
+    keyboard.button(
+        text=i18n.get("btn-back"),
+        callback_data=f"alert_currency_{currency_id}"
     )
     keyboard.adjust(1)
     return keyboard.as_markup()
+
+
+def get_back_to_menu_keyboard(i18n: TranslatorRunner) -> InlineKeyboardMarkup:
+    """Создает клавиатуру с кнопкой возврата в главное меню."""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(
+        text=i18n.get("btn-back"),
+        callback_data="back_to_menu"
+    )
+    keyboard.adjust(1)
+    return keyboard.as_markup()
+
