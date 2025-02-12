@@ -5,17 +5,18 @@ from typing import Dict, Optional
 from datetime import datetime, timedelta
 from nats.aio.client import Client as NATS
 from nats.aio.errors import ErrTimeout, ErrNoServers
-from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup
+from aiogram import Bot, types
+from aiogram.types import InlineKeyboardMarkup, Message
 from fluentogram import TranslatorHub
 from keyboards.inline import get_new_alert_keyboard
 from utils.format_helpers import format_crypto_price
+from utils.dialog_manager import deactivate_previous_dialogs, register_message
 
 logger = logging.getLogger(__name__)
 
 class GlobalRateLimiter:
     """Глобальный ограничитель для всех сообщений бота"""
-    def __init__(self, messages_per_second: int = 100):
+    def __init__(self, messages_per_second: int = 30):
         self.messages_per_second = messages_per_second
         self.message_timestamps = []
         self.lock = asyncio.Lock()
@@ -47,105 +48,101 @@ class NotificationService:
         self.translator_hub = translator_hub
         self.nats = NATS()
         self.nats_url = nats_url
-        self.user_rate_limit = 5  # сообщений в секунду для одного пользователя
+        self.user_rate_limit = 1  # сообщений в секунду для одного пользователя
         self._last_sent: Dict[int, datetime] = {}
-        self.global_limiter = GlobalRateLimiter(100)  # глобальный лимит 25 сообщений/сек
-        
+        self.global_limiter = GlobalRateLimiter()
+
     async def connect(self):
         """Подключение к NATS"""
         try:
             await self.nats.connect(
                 self.nats_url,
                 reconnect_time_wait=1,
-                max_reconnect_attempts=-1,  # бесконечные попытки
+                max_reconnect_attempts=60,
                 connect_timeout=20
             )
-            logger.info("Connected to NATS")
             
-            # Инициализируем JetStream
-            self.js = self.nats.jetstream()
+            # Подписываемся на основную очередь уведомлений
+            await self.nats.subscribe(
+                "alerts",
+                cb=self._notification_handler
+            )
             
-            # Создаем стрим для уведомлений, если его еще нет
-            try:
-                await self.js.add_stream(name="ALERTS", subjects=["alerts.*"])
-            except Exception as e:
-                if not "stream name already in use" in str(e).lower():
-                    raise
-            
-            # Подписываемся на очередь уведомлений
-            await self.js.subscribe(
-                "alerts.notifications",
-                durable="notification_processors",
-                queue="notification_processors",
+            # Подписываемся на очередь высокоприоритетных уведомлений
+            await self.nats.subscribe(
+                "alerts.high",
                 cb=self._notification_handler
             )
             
             # Подписываемся на очередь отложенных уведомлений
-            await self.js.subscribe(
+            await self.nats.subscribe(
                 "alerts.delayed",
-                durable="delayed_processors",
-                queue="delayed_processors",
                 cb=self._delayed_notification_handler
             )
             
-            logger.info("Subscribed to notification queues")
+            logger.info("Successfully connected to NATS")
             
         except ErrNoServers as e:
             logger.error(f"Could not connect to NATS: {e}")
             raise
+        except Exception as e:
+            logger.error(f"Unexpected error connecting to NATS: {e}")
+            raise
 
-    async def publish_alert_notification(self, 
-                                    user_id: int, 
-                                    currency: str,
-                                    current_price: float,
-                                    threshold: float,
-                                    currency_type: str,
-                                    condition_type: str,
-                                    alert_id: int,
-                                    currency_id: int,
-                                    user_language: str = "ru",
-                                    priority: str = "normal"):
+    async def publish_alert_notification(
+        self, 
+        user_id: int, 
+        currency: str,
+        current_price: float,
+        threshold: float,
+        currency_type: str,
+        condition_type: str,
+        alert_id: int,
+        currency_id: int,
+        user_language: str = "ru",
+        priority: str = "normal"
+    ):
         """Публикация уведомления об алерте в NATS"""
         try:
+            # Получаем переводчик для языка пользователя
             i18n = self.translator_hub.get_translator_by_locale(user_language)
-            direction = i18n.get("alert-price-above") if condition_type == 'above' else i18n.get("alert-price-below")
             
+            # Формируем сообщение
+            currency_symbol = 'RUB' if currency_type.upper() == 'RUB' else 'USD'
+            direction = i18n.get("alert-price-above") if condition_type == 'above' else i18n.get("alert-price-below")
             message = (
-                f"🔔 {currency}\n" +
-                i18n.get("alert-price") + f" {direction} {format_crypto_price(threshold)} {currency_type}\n" +
-                i18n.get("alerts-current-price") + f" {format_crypto_price(current_price)} {currency_type}"
+                f"🔔 {currency}\n"+
+                i18n.get("alert-price")+f" {direction} {format_crypto_price(threshold)} {currency_symbol}\n"+
+                i18n.get("alerts-current-price")+f" {format_crypto_price(current_price)} {currency_symbol}"
             )
             
+            # Создаем клавиатуру
             keyboard = get_new_alert_keyboard(i18n, alert_id, currency_id)
             
-            # Преобразуем клавиатуру в словарь для сериализации
-            keyboard_dict = {
-                "inline_keyboard": [
-                    [
-                        {
-                            "text": button.text,
-                            "callback_data": button.callback_data
-                        } for button in row
-                    ] for row in keyboard.inline_keyboard
-                ]
-            }
+            # Преобразуем клавиатуру в словарь для JSON сериализации
+            keyboard_dict = keyboard.model_dump() if keyboard else None
             
-            payload = {
+            # Формируем данные для отправки
+            data = {
                 "user_id": user_id,
                 "message": message,
                 "keyboard": keyboard_dict,
-                "priority": priority,
-                "timestamp": datetime.utcnow().isoformat(),
                 "retry_count": 0
             }
             
-            subject = "alerts.notifications" if priority == "high" else "alerts.delayed"
-            await self.js.publish(
-                subject,
-                json.dumps(payload).encode()
+            # Публикуем в NATS
+            json_data = json.dumps(data)
+            logger.info(f"Publishing notification with data: {json_data}")
+            
+            await self.nats.publish(
+                "alerts",  # всегда используем основную очередь
+                json_data.encode()
             )
+            
+            logger.info(f"Published alert notification for user {user_id} to alerts queue")
+            
         except Exception as e:
-            logger.error(f"Error publishing alert notification: {e}")
+            logger.error(f"Error publishing notification: {e}")
             raise
 
     async def _can_send_to_user(self, user_id: int) -> bool:
@@ -181,51 +178,73 @@ class NotificationService:
                     )
                 return
             
-            # Отправляем сообщение
+            # Получаем чат для регистрации сообщения
+            chat = await self.bot.get_chat(user_id)
+            
+            # Получаем список активных сообщений для этого чата
+            from utils.dialog_manager import _get_chat_messages
+            active_messages = _get_chat_messages(chat.id)
+            
+            # Деактивируем все активные сообщения
+            messages_to_deactivate = active_messages.copy()
+            for msg_id in messages_to_deactivate:
+                try:
+                    await self.bot.edit_message_reply_markup(
+                        chat_id=chat.id,
+                        message_id=msg_id,
+                        reply_markup=None
+                    )
+                    active_messages.remove(msg_id)
+                    logger.info(f"Successfully removed keyboard from message {msg_id}")
+                except Exception as e:
+                    if "message to edit not found" in str(e).lower() or "message is not modified" in str(e).lower():
+                        active_messages.remove(msg_id)
+                        logger.info(f"Message {msg_id} was already removed or not found")
+                    else:
+                        logger.warning(f"Failed to remove keyboard from message {msg_id}: {e}")
+            
+            # Отправляем новое сообщение
+            logger.info(f"Preparing to send message. Keyboard data: {keyboard}")
+            
             try:
                 if keyboard:
                     # Создаем InlineKeyboardMarkup из словаря
-                    keyboard_markup = InlineKeyboardMarkup.model_validate(keyboard)
-                    await self.bot.send_message(
+                    keyboard_markup = InlineKeyboardMarkup(**keyboard)
+                    sent_message = await self.bot.send_message(
                         user_id,
                         message,
                         reply_markup=keyboard_markup
                     )
+                    # Регистрируем сообщение с клавиатурой
+                    register_message(chat.id, sent_message.message_id)
+                    logger.info(f"Sent message with keyboard to user {user_id}")
                 else:
-                    await self.bot.send_message(user_id, message)
-                    
-                await msg.ack()  # Подтверждаем успешную обработку
+                    sent_message = await self.bot.send_message(user_id, message)
+                    logger.info(f"Sent message without keyboard to user {user_id}")
+                
                 logger.info(f"Successfully sent notification to user {user_id}")
                 
             except Exception as e:
-                logger.error(f"Error sending message to user {user_id}: {e}")
+                logger.error(f"Error sending message: {e}. Keyboard data: {keyboard}")
                 if retry_count < 3:  # максимум 3 попытки
                     data["retry_count"] = retry_count + 1
                     await self.nats.publish(
                         "alerts.delayed",
                         json.dumps(data).encode()
                     )
-
+                raise
+            
         except Exception as e:
-            logger.error(f"Error processing notification: {e}")
+            logger.error(f"Error sending message to user {user_id if 'user_id' in locals() else 'unknown'}: {e}")
 
     async def _delayed_notification_handler(self, msg):
         """Обработчик отложенных уведомлений"""
-        try:
-            data = json.loads(msg.data.decode())
-            await asyncio.sleep(1)  # Ждем 1 секунду перед повторной попыткой
-            await self.nats.publish(
-                "alerts.notifications",
-                json.dumps(data).encode()
-            )
-            await msg.ack()
-        except Exception as e:
-            logger.error(f"Error processing delayed notification: {e}")
+        await self._notification_handler(msg)
 
     async def close(self):
         """Закрытие соединения с NATS"""
         try:
-            await self.nats.drain()
             await self.nats.close()
+            logger.info("NATS connection closed")
         except Exception as e:
             logger.error(f"Error closing NATS connection: {e}")

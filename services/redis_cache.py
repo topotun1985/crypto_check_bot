@@ -17,7 +17,8 @@ class RedisCache:
         """Инициализация Redis клиента"""
         if not hasattr(self, 'redis'):
             self.redis = aioredis.Redis.from_url(redis_url, decode_responses=True)
-            self.default_expire = 30  # 30 секунд для курсов криптовалют
+            self.default_expire = 120  # 120 секунд для курсов криптовалют
+            self.usd_rate_expire = 900  # 15 минут для курса доллара
 
     async def get_crypto_rates(self) -> Optional[Dict[str, float]]:
         """Получает курсы криптовалют из кэша"""
@@ -56,7 +57,7 @@ class RedisCache:
             await self.redis.set(
                 "usd_rate",
                 str(rate),
-                ex=self.default_expire
+                ex=self.usd_rate_expire
             )
             return True
         except Exception as e:

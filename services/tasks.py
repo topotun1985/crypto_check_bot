@@ -11,7 +11,7 @@ from handlers.notification_settings import check_alert_conditions
 logger = logging.getLogger(__name__)
 
 class BackgroundTasks:
-    def __init__(self, bot=None, notification_service=None, shard_manager=None):
+    def __init__(self, bot=None, notification_service=None):
         self.crypto_service = CryptoService()
         self.fiat_service = FiatService()
         self.redis_cache = RedisCache()
@@ -19,7 +19,7 @@ class BackgroundTasks:
         self.bot = bot
         self.i18n = None
         self.notification_service = notification_service
-        self.shard_manager = shard_manager
+        self.alert_service = None
 
     async def start(self):
         """Запуск фоновых задач"""
@@ -51,7 +51,7 @@ class BackgroundTasks:
                     await self.redis_cache.set_crypto_rates(rates)
                     
                     # Сохраняем в БД
-                    async with get_db() as session:
+                    async with get_db(telegram_id=None) as session:
                         for symbol, price in rates.items():
                             await update_crypto_rate(session, symbol, price)
                         
@@ -71,7 +71,7 @@ class BackgroundTasks:
                     await self.redis_cache.set_dollar_rate(rate)
                     
                     # Сохраняем в БД
-                    async with get_db() as session:
+                    async with get_db(telegram_id=None) as session:
                         await update_dollar_rate(session, rate)
                         logger.info(f"USD/RUB: {rate}")
             except Exception as e:
@@ -81,7 +81,7 @@ class BackgroundTasks:
     async def check_expired_subscriptions(self):
         """Проверяет истекшие подписки и сбрасывает их раз в час"""
         while self.is_running:
-            async with get_db() as session:
+            async with get_db(telegram_id=None) as session:
                 try:
                     await reset_expired_subscriptions(session)
                     logger.info("Проверены истекшие подписки")
@@ -93,8 +93,20 @@ class BackgroundTasks:
         """Проверяет условия алертов и отправляет уведомления (раз в минуту)"""
         while self.is_running:
             try:
-                if self.i18n and self.notification_service and self.shard_manager:
-                    await check_alert_conditions(self.bot, self.i18n, self.notification_service, self.shard_manager)
+                # Only proceed if we have both i18n and notification service
+                if not (self.i18n and self.notification_service):
+                    logger.warning("Missing i18n or notification service for alert checking")
+                    await asyncio.sleep(60)
+                    continue
+
+                # Initialize alert service if needed
+                if not self.alert_service:
+                    from services.alert_service import AlertService
+                    self.alert_service = AlertService(
+                        notification_service=self.notification_service,
+                        translator_hub=self.i18n._translator_hub
+                        )
+                    await self.alert_service.start()
                 else:
                     if not self.i18n:
                         logger.error("i18n не инициализирован для проверки алертов")
