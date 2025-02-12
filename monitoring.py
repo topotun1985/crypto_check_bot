@@ -32,7 +32,7 @@ async def monitor_shards():
         try:
             for shard_id in range(2):
                 user_id = shard_id  # Используем shard_id как user_id для правильного роутинга
-                async with get_db(user_id=user_id) as session:
+                async with get_db() as session:
                     # Подсчет пользователей
                     result = await session.execute(text("SELECT COUNT(*) FROM users"))
                     users_count = result.scalar()

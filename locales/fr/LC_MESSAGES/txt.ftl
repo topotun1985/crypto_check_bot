@@ -119,6 +119,14 @@ rate-not-found = ❌ Impossible d'obtenir le taux de la pièce.
 alerts-invalid-number = ❌ Veuillez entrer un nombre valide
 error-threshold-must-be-positive = ❌ La valeur doit être supérieure à 0
 error-threshold-invalid-format = ❌ Format de nombre invalide. Utilisez le point comme séparateur décimal (par exemple : 1.23)
-error-threshold-too-many-decimals-small = ❌ Trop de chiffres après le point : { $decimals }\nPour les nombres inférieurs à 1, un maximum de 5 chiffres décimaux est autorisé\nExemple : 0.00123
-error-threshold-too-many-decimals-large = ❌ Trop de chiffres après le point : { $decimals }\nPour les nombres supérieurs ou égaux à 1, un maximum de 2 chiffres décimaux est autorisé\nExemples : 1.23, 10.5, 100.00
-error-threshold-generic = ❌ Veuillez saisir un nombre valide\nExemples:\n- Nombres entiers : 1, 10, 100\n- Avec un point : 1.23, 0.0012
+error-threshold-too-many-decimals-small = ❌ Trop de chiffres après le point : { $decimals }
+                                          Pour les nombres inférieurs à 1, un maximum de 5 chiffres décimaux est autorisé
+                                          Exemple : 0.00123
+error-threshold-too-many-decimals-large = ❌ Trop de chiffres après le point : { $decimals }
+                                          Pour les nombres supérieurs ou égaux à 1, un maximum de 2 chiffres décimaux est autorisé
+                                          Exemples : 1.23, 10.5, 100.00
+error-threshold-generic = ❌ Veuillez saisir un nombre valide
+                          Exemples:
+                          - Nombres entiers : 1, 10, 100
+                          - Avec un point : 1.23, 0.0012
+error-threshold-too-large = ❌ La valeur est trop importante. La valeur maximale autorisée est de 999999999

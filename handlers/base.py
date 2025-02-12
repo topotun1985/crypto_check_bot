@@ -20,7 +20,7 @@ async def get_or_create_user(message: Message = None, callback: CallbackQuery = 
 
     try:
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=telegram_id) as session:
+        async with get_db() as session:
             # Ищем пользователя
             result = await session.execute(
                 select(User).where(User.telegram_id == telegram_id)

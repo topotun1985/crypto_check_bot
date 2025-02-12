@@ -27,13 +27,17 @@ class TranslatorRunnerMiddleware(BaseMiddleware):
         # hub: TranslatorRunner = data.get('_translator_hub')
         # data['i18n'] = hub.get_translator_by_locale(locale=user.language_code)
 
-        # Получаем язык из БД
-        async with get_db() as session:
-            db_user = await get_user(session, user.id)
-            if db_user:
-                locale = db_user.language
-            else:
-                locale = user.language_code or 'en'
+        try:
+            # Получаем язык из БД
+            async with get_db(telegram_id=user.id) as session:
+                db_user = await get_user(session, user.id)
+                if db_user:
+                    locale = db_user.language
+                else:
+                    locale = user.language_code or 'en'
+        except Exception as e:
+            logger.error(f"Error getting user language from database: {e}")
+            locale = user.language_code or 'en'
     
         hub: TranslatorRunner = data.get('_translator_hub')
         data['i18n'] = hub.get_translator_by_locale(locale=locale)

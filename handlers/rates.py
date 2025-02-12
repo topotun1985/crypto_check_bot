@@ -9,6 +9,7 @@ from keyboards.inline import back_to_menu_button, get_rates_keyboard
 from datetime import datetime
 from config import CRYPTO_NAMES
 from utils.format_helpers import format_crypto_price
+from utils.dialog_manager import register_message
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,12 @@ rates_router = Router()
 @rates_router.callback_query(F.data.startswith("toggle_currency_display_"))
 async def toggle_currency_display(callback: CallbackQuery, i18n: TranslatorRunner):
     """Переключает отображение валют между рублями и долларами."""
-    show_in_rub = callback.data.endswith("rub")
-    await show_all_rates(callback, i18n, show_in_rub)
+    try:
+        show_in_rub = callback.data.endswith("rub")
+        await show_all_rates(callback, i18n, show_in_rub)
+    except Exception as e:
+        logger.error(f"Error in toggle_currency_display for user {callback.from_user.id}: {str(e)}")
+        await callback.message.answer(i18n.get('alerts-error'))
 
 
 @rates_router.callback_query(F.data == "show_all_currency")
@@ -28,8 +33,9 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_i
     try:
         redis_cache = RedisCache()
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=callback.from_user.id) as session:
+        async with get_db(telegram_id=callback.from_user.id) as session:
             user = await get_user(session, callback.from_user.id)
+            # Для не русских пользователей всегда показываем в USD
             # Для не русских пользователей всегда показываем в USD
             if user.language != "ru":
                 show_in_rub = False
@@ -76,16 +82,18 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_i
                                    time=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")))
             
             # Создаем клавиатуру с кнопкой переключения только для русских пользователей
-            keyboard = get_rates_keyboard(i18n, show_in_rub) if user.language == "ru" else back_to_menu_button(i18n)
+            keyboard = get_rates_keyboard(i18n, show_in_rub, user.language)
             
             await callback.message.edit_text(
                 "\n".join(messages),
                 reply_markup=keyboard
             )
+            register_message(callback.message.chat.id, callback.message.message_id)
             
     except Exception as e:
-        logger.error(f"Error showing rates to user {callback.from_user.id}: {e}")
+        logger.error(f"Error showing rates to user {callback.from_user.id}: {str(e)}")
         await callback.message.edit_text(
             i18n.get("rates-error"),
             reply_markup=back_to_menu_button(i18n)
         )
+        

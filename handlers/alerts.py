@@ -24,7 +24,7 @@ async def show_alerts(callback: CallbackQuery, i18n: TranslatorRunner):
     """Показывает все алерты пользователя."""
     try:
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=callback.from_user.id) as session:
+        async with get_db() as session:
             alerts = await get_user_alerts(session, callback.from_user.id)
             
             if not alerts:
@@ -63,7 +63,7 @@ async def start_add_alert(callback: CallbackQuery, state: FSMContext, i18n: Tran
     """Начинает процесс добавления нового алерта."""
     try:
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=callback.from_user.id) as session:
+        async with get_db() as session:
             currencies = await get_user_currencies(session, callback.from_user.id)
             
             if not currencies:
@@ -93,7 +93,7 @@ async def handle_currency_selection(callback: CallbackQuery, state: FSMContext, 
     
     try:
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=callback.from_user.id) as session:
+        async with get_db() as session:
             result = await session.execute(
                 select(UserCurrency).where(UserCurrency.id == currency_id)
             )
@@ -134,7 +134,7 @@ async def handle_threshold(message: Message, state: FSMContext, i18n: Translator
         currency_id = state_data["currency_id"]
 
         # Используем telegram_id для определения шарда
-        async with get_db(user_id=message.from_user.id) as session:
+        async with get_db() as session:
             # Создаем новый алерт
             alert = Alert(
                 user_id=message.from_user.id,

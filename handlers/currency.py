@@ -27,7 +27,7 @@ async def show_currency_menu(callback: CallbackQuery, i18n: TranslatorRunner):
     """Показывает меню управления валютами."""
     try:
         user_id = callback.from_user.id
-        async with get_db(user_id=user_id) as session:
+        async with get_db() as session:
             user_currencies = await get_user_currencies(session, user_id)
             subscription = await get_user_subscription(session, user_id)
             
@@ -67,7 +67,7 @@ async def show_add_currency(callback: CallbackQuery, i18n: TranslatorRunner):
     """Показывает список доступных для добавления валют."""
     try:
         user_id = callback.from_user.id
-        async with get_db(user_id=user_id) as session:
+        async with get_db() as session:
             user_currencies = await get_user_currencies(session, user_id)
             tracked_currencies = [uc.currency for uc in user_currencies]
             
@@ -98,7 +98,7 @@ async def show_remove_currency(callback: CallbackQuery, i18n: TranslatorRunner):
     """Показывает список валют для удаления."""
     try:
         user_id = callback.from_user.id
-        async with get_db(user_id=user_id) as session:
+        async with get_db() as session:
             user_currencies = await get_user_currencies(session, user_id)
             
             if not user_currencies:
@@ -128,7 +128,7 @@ async def handle_add_currency(callback: CallbackQuery, i18n: TranslatorRunner):
         currency = callback.data.split("_")[1]
         user_id = callback.from_user.id
         
-        async with get_db(user_id=user_id) as session:
+        async with get_db() as session:
             # Проверяем лимит валют для текущего тарифа
             subscription = await get_user_subscription(session, user_id)
             currency_limit = get_subscription_limit(subscription.plan if subscription else "free")
@@ -163,7 +163,7 @@ async def handle_remove_currency(callback: CallbackQuery, i18n: TranslatorRunner
         currency = callback.data.split("_")[1]
         user_id = callback.from_user.id
         
-        async with get_db(user_id=user_id) as session:
+        async with get_db() as session:
             await remove_user_currency(session, user_id, currency)
             
             await callback.message.edit_text(

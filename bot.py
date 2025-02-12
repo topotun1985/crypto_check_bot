@@ -14,8 +14,8 @@ from middlewares.i18n import TranslatorRunnerMiddleware
 from utils.i18n import create_translator_hub
 from services.tasks import BackgroundTasks
 from services.notification_service import NotificationService
-from services.alert_service import AlertService
-from database.sharding import ShardManager
+
+
 from config import BOT_COMMANDS
 from sqlalchemy import select
 from database.models import User
@@ -136,19 +136,19 @@ async def main():
         # Регистрируем миддлварь для i18n
         dp.update.middleware(TranslatorRunnerMiddleware())
         
+        # Добавляем translator_hub в данные диспетчера
+        dp.workflow_data.update({"_translator_hub": translator_hub})
+        
         # Создаем сервисы
         notification_service = NotificationService(
             bot=bot,
             translator_hub=translator_hub,
             nats_url=os.getenv("NATS_URL", "nats://nats:4222")
         )
-        shard_manager = ShardManager()
-        
         # Запускаем фоновые задачи
         tasks = BackgroundTasks(
             bot=bot,
-            notification_service=notification_service,
-            shard_manager=shard_manager
+            notification_service=notification_service
         )
         tasks.i18n = translator_hub.get_translator_by_locale(locale='ru')
         
@@ -162,8 +162,8 @@ async def main():
         
         await tasks.start()
         
-        # Регистрируем команды бота
-        await set_bot_commands(bot, translator_hub)
+        # TODO: Временно отключаем установку команд
+        # await set_bot_commands(bot, translator_hub)
         
         # Устанавливаем обработчики сигналов
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGABRT):

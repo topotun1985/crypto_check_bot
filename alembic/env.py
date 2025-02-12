@@ -16,8 +16,8 @@ from database.models import Base
 # Получаем параметры подключения из переменных окружения
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
 DB_PASS = os.getenv("POSTGRES_PASSWORD", "Vadim22021985")
-DB_HOST = os.getenv("POSTGRES_HOST", "db")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
+DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+DB_PORT = os.getenv("POSTGRES_PORT", "5433")
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
@@ -47,20 +47,17 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the
     script output.
     """
-    # Применяем миграции ко всем шардам
-    for shard_id in range(2):  # Начинаем с 2 шардов
-        db_name = f"crypto_bot_shard_{shard_id}"
-        url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{db_name}"
-        
-        context.configure(
-            url=url,
-            target_metadata=target_metadata,
-            literal_binds=True,
-            dialect_opts={"paramstyle": "named"},
-        )
+    url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/crypto_bot"
+    
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
 
-        with context.begin_transaction():
-            context.run_migrations()
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 def run_migrations_online() -> None:
@@ -69,31 +66,24 @@ def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
-    # Создаем движки для всех шардов
-    shard_engines = {}
     configuration = config.get_section(config.config_ini_section)
+    configuration["sqlalchemy.url"] = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/crypto_bot"
     
-    for shard_id in range(2):  # Начинаем с 2 шардов
-        db_name = f"crypto_bot_shard_{shard_id}"
-        configuration["sqlalchemy.url"] = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{db_name}"
-        shard_engines[shard_id] = engine_from_config(
-            configuration,
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
+    engine = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with engine.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True
         )
 
-    # Применяем миграции ко всем шардам
-    for shard_id, engine in shard_engines.items():
-        logger.info(f"Applying migrations to shard {shard_id}")
-        with engine.connect() as connection:
-            context.configure(
-                connection=connection,
-                target_metadata=target_metadata,
-                compare_type=True
-            )
-
-            with context.begin_transaction():
-                context.run_migrations()
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():

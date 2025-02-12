@@ -12,9 +12,11 @@ from database.queries import (
     get_all_crypto_rates,
     get_dollar_rate,
     get_user_subscription,
+    get_user,
     SUBSCRIPTION_LIMITS
 )
 from keyboards.inline import get_my_currencies_keyboard, back_to_menu_button
+from utils.dialog_manager import register_message
 
 
 my_currencies_router = Router()
@@ -41,7 +43,7 @@ async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, sh
     """Показывает список валют пользователя."""
     try:
         user_id = callback.from_user.id
-        async with get_db(user_id) as session:
+        async with get_db(telegram_id=callback.from_user.id) as session:
             # Получаем валюты пользователя
             user_currencies = await get_user_currencies(session, callback.from_user.id)
             subscription = await get_user_subscription(session, callback.from_user.id)
@@ -83,13 +85,20 @@ async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, sh
                     i18n.get("rates-updated", time=last_update.strftime("%Y-%m-%d %H:%M:%S"))
                 ])
             
+            # Получаем пользователя для проверки языка
+            user = await get_user(session, callback.from_user.id)
+            
+            # Выбираем клавиатуру в зависимости от языка
+            keyboard = get_my_currencies_keyboard(i18n, show_in_rub) if user.language == "ru" else back_to_menu_button(i18n)
+            
             await callback.message.edit_text(
                 "\n".join(messages),
-                reply_markup=get_my_currencies_keyboard(i18n, show_in_rub)
+                reply_markup=keyboard
             )
+            register_message(callback.message.chat.id, callback.message.message_id)
             
     except Exception as e:
-        logger.error(f"Error showing user currencies to user {callback.from_user.id}: {e}")
+        logger.error(f"Error showing user currencies to user {callback.from_user.id}: {str(e)}")
         await callback.message.edit_text(
             i18n.get("rates-error"),
             reply_markup=back_to_menu_button(i18n)
@@ -98,11 +107,23 @@ async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, sh
 @my_currencies_router.callback_query(F.data.startswith("toggle_my_currency_display_"))
 async def toggle_my_currency_display(callback: CallbackQuery, i18n: TranslatorRunner):
     """Переключает отображение валют между рублями и долларами в разделе 'Мои валюты'."""
-    show_in_rub = callback.data.endswith("rub")
-    await show_my_currencies(callback, i18n, show_in_rub)
+    try:
+        # Деактивируем предыдущие диалоги
+        
+        show_in_rub = callback.data.endswith("rub")
+        await show_my_currencies(callback, i18n, show_in_rub)
+    except Exception as e:
+        logger.error(f"Error in toggle_my_currency_display for user {callback.from_user.id}: {str(e)}")
+        await callback.message.answer(i18n.get('alerts-error'))
 
 @my_currencies_router.callback_query(F.data.startswith("toggle_currency_display_"))
 async def toggle_currency_display(callback: CallbackQuery, i18n: TranslatorRunner):
     """Переключает отображение валют между рублями и долларами."""
-    show_in_rub = callback.data.endswith("rub")
-    await show_my_currencies(callback, i18n, show_in_rub)
+    try:
+        # Деактивируем предыдущие диалоги
+        
+        show_in_rub = callback.data.endswith("rub")
+        await show_my_currencies(callback, i18n, show_in_rub)
+    except Exception as e:
+        logger.error(f"Error in toggle_currency_display for user {callback.from_user.id}: {str(e)}")
+        await callback.message.answer(i18n.get('alerts-error'))

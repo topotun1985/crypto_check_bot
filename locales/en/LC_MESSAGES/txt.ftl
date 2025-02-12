@@ -119,6 +119,14 @@ rate-not-found = ❌ Unable to retrieve the coin rate.
 alerts-invalid-number = ❌ Please enter a valid number
 error-threshold-must-be-positive = ❌ The value must be greater than 0
 error-threshold-invalid-format = ❌ Invalid number format. Use a dot as the decimal separator (e.g., 1.23)
-error-threshold-too-many-decimals-small = ❌ Too many digits after the decimal point: { $decimals }\nFor numbers less than 1, a maximum of 5 decimal places is allowed\nExample: 0.00123
-error-threshold-too-many-decimals-large = ❌ Too many digits after the decimal point: { $decimals }\nFor numbers greater than or equal to 1, a maximum of 2 decimal places is allowed\nExamples: 1.23, 10.5, 100.00
-error-threshold-generic = ❌ Please enter a valid number\nExamples:\n- Integers: 1, 10, 100\n- With a dot: 1.23, 0.0012
+error-threshold-too-many-decimals-small = ❌ Too many digits after the decimal point: { $decimals }
+                                          For numbers less than 1, a maximum of 5 decimal places is allowed
+                                          Example: 0.00123
+error-threshold-too-many-decimals-large = ❌ Too many digits after the decimal point: { $decimals }
+                                          For numbers greater than or equal to 1, a maximum of 2 decimal places is allowed
+                                          Examples: 1.23, 10.5, 100.00
+error-threshold-generic = ❌ Please enter a valid number
+                          Examples:
+                          - Integers: 1, 10, 100
+                          - With a dot: 1.23, 0.0012
+error-threshold-too-large = ❌ The value is too large. Maximum allowed value is 999,999,999

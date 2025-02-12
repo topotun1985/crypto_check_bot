@@ -12,6 +12,7 @@ from database.queries import (
     SUBSCRIPTION_LIMITS
 )
 from keyboards.inline import get_choose_currency_keyboard, back_to_menu_button
+from utils.dialog_manager import register_message
 
 choose_currency_router = Router()
 logger = logging.getLogger(__name__)
@@ -34,9 +35,10 @@ async def show_currency_selection(callback: CallbackQuery, i18n: TranslatorRunne
                 message,
                 reply_markup=get_choose_currency_keyboard(i18n, [c.currency for c in user_currencies])
             )
+            register_message(callback.message.chat.id, callback.message.message_id)
             
     except Exception as e:
-        logger.error(f"Error showing currency selection to user {callback.from_user.id}: {e}")
+        logger.error(f"Error showing currency selection to user {callback.from_user.id}: {str(e)}")
         await callback.message.edit_text(
             i18n.get("rates-error"),
             reply_markup=back_to_menu_button(i18n)
@@ -45,9 +47,10 @@ async def show_currency_selection(callback: CallbackQuery, i18n: TranslatorRunne
 @choose_currency_router.callback_query(F.data.startswith("toggle_crypto_"))
 async def toggle_crypto(callback: CallbackQuery, i18n: TranslatorRunner):
     """Добавляет или удаляет валюту из списка отслеживаемых."""
-    crypto = callback.data.split("_")[2]
-    
     try:
+        # Деактивируем предыдущие диалоги
+        
+        crypto = callback.data.split("_")[2]
         async with get_db() as session:
             user_currencies = await get_user_currencies(session, callback.from_user.id)
             is_tracked = any(c.currency == crypto for c in user_currencies)
@@ -70,7 +73,7 @@ async def toggle_crypto(callback: CallbackQuery, i18n: TranslatorRunner):
             await show_currency_selection(callback, i18n)
             
     except Exception as e:
-        logger.error(f"Error toggling crypto for user {callback.from_user.id}: {e}")
+        logger.error(f"Error toggling crypto for user {callback.from_user.id}: {str(e)}")
         await callback.message.edit_text(
             i18n.get("rates-error"),
             reply_markup=back_to_menu_button(i18n)

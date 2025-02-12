@@ -13,7 +13,7 @@ SUBSCRIPTION_LIMITS = {
     "free": 1,
     "basic": 5,
     "standard": 10,
-    "premium": 20
+    "premium": 30
 }
 
 async def add_user(session: AsyncSession, telegram_id: int, username: str, language_code: str = None):

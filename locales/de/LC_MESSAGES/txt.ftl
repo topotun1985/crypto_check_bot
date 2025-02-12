@@ -119,6 +119,14 @@ rate-not-found = ❌ Konnte den Kurs der Währung nicht abrufen.
 alerts-invalid-number = ❌ Bitte gib eine gültige Zahl ein
 error-threshold-must-be-positive = ❌ Der Wert muss größer als 0 sein
 error-threshold-invalid-format = ❌ Ungültiges Zahlenformat. Verwenden Sie den Punkt als Dezimaltrennzeichen (zum Beispiel: 1.23)
-error-threshold-too-many-decimals-small = ❌ Zu viele Nachkommastellen: { $decimals }\nFür Zahlen kleiner als 1 sind maximal 5 Dezimalstellen zulässig\nBeispiel: 0.00123
-error-threshold-too-many-decimals-large = ❌ Zu viele Nachkommastellen: { $decimals }\nFür Zahlen größer oder gleich 1 sind maximal 2 Dezimalstellen zulässig\nBeispiele: 1.23, 10.5, 100.00
-error-threshold-generic = ❌ Bitte geben Sie eine gültige Zahl ein\nBeispiele:\n- Ganze Zahlen: 1, 10, 100\n- Mit Punkt: 1.23, 0.0012
+error-threshold-too-many-decimals-small = ❌ Zu viele Nachkommastellen: { $decimals }
+                                          Für Zahlen kleiner als 1 sind maximal 5 Dezimalstellen zulässig
+                                          Beispiel: 0.00123
+error-threshold-too-many-decimals-large = ❌ Zu viele Nachkommastellen: { $decimals }
+                                          Für Zahlen größer oder gleich 1 sind maximal 2 Dezimalstellen zulässig
+                                          Beispiele: 1.23, 10.5, 100.00
+error-threshold-generic = ❌ Bitte geben Sie eine gültige Zahl ein
+                          Beispiele:
+                          - Ganze Zahlen: 1, 10, 100
+                          - Mit Punkt: 1.23, 0.0012
+error-threshold-too-large = ❌ Der Wert ist zu groß. Der maximal zulässige Wert ist 999.999.999

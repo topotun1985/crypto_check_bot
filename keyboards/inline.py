@@ -35,24 +35,26 @@ def back_to_menu_button(i18n: TranslatorRunner):
     return keyboard.as_markup()
 
 
-def get_rates_keyboard(i18n: TranslatorRunner, show_in_rub: bool) -> InlineKeyboardMarkup:
+def get_rates_keyboard(i18n: TranslatorRunner, show_in_rub: bool, user_language: str = None) -> InlineKeyboardMarkup:
     """Создает клавиатуру с кнопками переключения валюты и возврата в меню."""
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text=i18n.get('btn-toggle-currency',
-                             currency=i18n.get('show-in-usd' if show_in_rub else 'show-in-rub')),
-                callback_data=f"toggle_currency_display_{'usd' if show_in_rub else 'rub'}"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=i18n.get('btn-back'),
-                callback_data="back_to_menu"
-            )
-        ]
-    ])
-    return keyboard
+    builder = InlineKeyboardBuilder()
+    
+    # Добавляем кнопку переключения валюты только для русских пользователей
+    if user_language == "ru":
+        builder.button(
+            text=i18n.get('btn-toggle-currency',
+                         currency=i18n.get('show-in-usd' if show_in_rub else 'show-in-rub')),
+            callback_data=f"toggle_currency_display_{'usd' if show_in_rub else 'rub'}"
+        )
+    
+    # Кнопка возврата в меню
+    builder.button(
+        text=i18n.get('btn-back'),
+        callback_data="back_to_menu"
+    )
+    
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def get_my_currencies_keyboard(i18n: TranslatorRunner, show_in_rub: bool) -> InlineKeyboardMarkup:
@@ -193,7 +195,7 @@ def get_new_alert_keyboard(i18n: TranslatorRunner, alert_id: int, currency_id: i
     keyboard = InlineKeyboardBuilder()
     keyboard.button(
         text=i18n.get("btn-set-new-threshold"),
-        callback_data=f"set_new_threshold_{currency_id}_{alert_id}"
+        callback_data=f"set_new_threshold_{alert_id}"
     )
     keyboard.button(
         text=i18n.get("btn-back"),

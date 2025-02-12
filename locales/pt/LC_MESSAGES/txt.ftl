@@ -119,6 +119,14 @@ rate-not-found = ❌ Não foi possível obter a cotação da moeda.
 alerts-invalid-number = ❌ Por favor, insira um número válido
 error-threshold-must-be-positive = ❌ O valor deve ser maior que 0
 error-threshold-invalid-format = ❌ Formato de número inválido. Use o ponto como separador decimal (por exemplo: 1.23)
-error-threshold-too-many-decimals-small = ❌ Muitos dígitos após o ponto: { $decimals }\nPara números menores que 1, é permitido no máximo 5 dígitos decimais\nExemplo: 0.00123
-error-threshold-too-many-decimals-large = ❌ Muitos dígitos após o ponto: { $decimals }\nPara números maiores ou iguais a 1, é permitido no máximo 2 dígitos decimais\nExemplos: 1.23, 10.5, 100.00
-error-threshold-generic = ❌ Por favor, insira um número válido\nExemplos:\n- Números inteiros: 1, 10, 100\n- Com ponto: 1.23, 0.0012
+error-threshold-too-many-decimals-small = ❌ Muitos dígitos após o ponto: { $decimals }
+                                          Para números menores que 1, é permitido no máximo 5 dígitos decimais
+                                          Exemplo: 0.00123
+error-threshold-too-many-decimals-large = ❌ Muitos dígitos após o ponto: { $decimals }
+                                          Para números maiores ou iguais a 1, é permitido no máximo 2 dígitos decimais
+                                          Exemplos: 1.23, 10.5, 100.00
+error-threshold-generic = ❌ Por favor, insira um número válido
+                          Exemplos:
+                          - Números inteiros: 1, 10, 100
+                          - Com ponto: 1.23, 0.0012
+error-threshold-too-large = ❌ O valor é demasiado grande. O valor máximo permitido é 999,999,999

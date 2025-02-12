@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -27,6 +26,7 @@ from database.queries import (
 )
 from keyboards.inline import get_new_alert_keyboard, get_threshold_input_keyboard, get_currency_settings_keyboard
 from utils.format_helpers import format_crypto_price, validate_threshold
+from utils.dialog_manager import register_message, deactivate_previous_dialogs
 from .start import back_to_menu  # Для правильной навигации
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def get_currency_settings_keyboard(currency_id: int, has_active_alerts: bool, i1
 async def show_notification_menu(callback: CallbackQuery, i18n: TranslatorRunner):
     """Show the main notification settings menu with list of currencies"""
     try:
-        async with get_db() as session:
+        async with get_db(telegram_id=callback.from_user.id) as session:
             # Получаем пользователя, его валюты и алерты одним запросом
             result = await session.execute(
                 select(UserCurrency, Alert)
@@ -143,6 +143,7 @@ async def show_notification_menu(callback: CallbackQuery, i18n: TranslatorRunner
                 i18n.get("alerts-choose-currency"),
                 reply_markup=keyboard
             )
+            register_message(callback.message.chat.id, callback.message.message_id)
     except Exception as e:
         logger.error(f"Error in show_notification_menu: {str(e)}", exc_info=True)
         await callback.message.edit_text(
@@ -161,7 +162,7 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
         if currency_id is None:
             currency_id = int(callback.data.split("_")[2])
         
-        async with get_db() as session:
+        async with get_db(telegram_id=callback.from_user.id) as session:
             # Получаем пользователя и его валюту
             result = await session.execute(
                 select(User, UserCurrency)
@@ -252,6 +253,7 @@ async def show_currency_settings(callback: CallbackQuery, i18n: TranslatorRunner
             keyboard = get_currency_settings_keyboard(currency_id=currency.id, has_active_alerts=has_active_alerts, i18n=i18n)
             try:
                 await callback.message.edit_text(message, reply_markup=keyboard)
+                register_message(callback.message.chat.id, callback.message.message_id)
             except TelegramBadRequest as e:
                 if "message is not modified" not in str(e):
                     raise
@@ -302,10 +304,17 @@ def get_threshold_input_keyboard(i18n: TranslatorRunner, currency_id: int, condi
     """Create keyboard for threshold input with back button."""
     builder = InlineKeyboardBuilder()
     
-    # Add back button that returns to currency type selection
+    # Add back button
+    if i18n.locale == "ru":
+        # For Russian users, go back to currency type selection
+        callback_data = f"set_threshold_{condition_type}_{currency_id}"
+    else:
+        # For non-Russian users, go back to currency settings
+        callback_data = f"back_to_settings_{currency_id}"
+    
     builder.button(
         text=i18n.get("btn-back"),
-        callback_data=f"set_threshold_{condition_type}_{currency_id}"
+        callback_data=callback_data
     )
     
     # Arrange buttons in a column
@@ -324,14 +333,8 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
         # Save data to state
         await state.update_data(currency_id=currency_id, condition_type=condition_type)
         
-        # Set state
-        await state.set_state(NotificationStates.CHOOSING_CURRENCY_TYPE)
-        
-        # Get keyboard
-        keyboard = get_currency_type_keyboard(i18n, currency_id, condition_type)
-        
         # Get current price
-        async with get_db() as session:
+        async with get_db(telegram_id=callback.from_user.id) as session:
             # Get user currency
             result = await session.execute(
                 select(User, UserCurrency)
@@ -359,14 +362,40 @@ async def handle_set_threshold(callback: CallbackQuery, state: FSMContext, i18n:
             current_price_usd = crypto_rate.price
             current_price_rub = current_price_usd * dollar_rate.price if dollar_rate else 0
         
-        # Show message with current price and currency type selection
-        message = i18n.get("select-currency-type")
-        await callback.message.edit_text(
-            message + "\n\n" +
-            i18n.get("alerts-current-price")+f"\n{format_crypto_price(current_price_usd)} $⁨\n{format_crypto_price(current_price_rub)} ₽⁩",
-            reply_markup=keyboard
-        )
+        if user.language == "ru":
+            # For Russian users, show currency selection
+            await state.set_state(NotificationStates.CHOOSING_CURRENCY_TYPE)
+            keyboard = get_currency_type_keyboard(i18n, currency_id, condition_type)
+            message = i18n.get("select-currency-type")
+            await callback.message.edit_text(
+                message + "\n\n" +
+                i18n.get("alerts-current-price")+f"\n{format_crypto_price(current_price_usd)} $⁨\n{format_crypto_price(current_price_rub)} ₽⁩",
+                reply_markup=keyboard
+            )
+        else:
+            # For non-Russian users, skip currency selection and go straight to threshold input with USD
+            await state.set_state(NotificationStates.ENTERING_THRESHOLD)
+            await state.update_data(currency_type="USD")
+            keyboard = get_threshold_input_keyboard(i18n, currency_id, condition_type, "USD")
+            await callback.message.edit_text(
+                i18n.get("enter-threshold-value") + "\n\n" +
+                i18n.get("alerts-current-price")+f"\n{format_crypto_price(current_price_usd)} $⁨",
+                reply_markup=keyboard
+            )
         
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            # Игнорируем ошибку о неизмененном сообщении
+            await callback.answer()
+        else:
+            logger.error(f"Telegram error in handle_set_threshold: {str(e)}", exc_info=True)
+            await callback.message.edit_text(
+                i18n.get("error-occurred"),
+                reply_markup=InlineKeyboardBuilder().button(
+                    text=i18n.get("btn-back"),
+                    callback_data="back_to_currencies"
+                ).as_markup()
+            )
     except Exception as e:
         logger.error(f"Error in handle_set_threshold: {str(e)}", exc_info=True)
         await callback.message.edit_text(
@@ -488,17 +517,31 @@ async def handle_threshold_input(message: Message, state: FSMContext, i18n: Tran
             # Validate threshold value
             threshold, error = validate_threshold(message.text, i18n)
             if error:
-                await message.answer(
+                # Деактивируем предыдущие диалоги
+                await deactivate_previous_dialogs(message)
+                
+                # Отправляем сообщение об ошибке
+                sent_message = await message.answer(
                     error,
                     reply_markup=get_threshold_input_keyboard(i18n, currency_id, condition_type, currency_type)
                 )
+                
+                # Регистрируем новое сообщение
+                register_message(message.chat.id, sent_message.message_id)
                 return
         except Exception as e:
             logger.error(f"Error validating threshold: {str(e)}")
-            await message.answer(
+            # Деактивируем предыдущие диалоги
+            await deactivate_previous_dialogs(message)
+            
+            # Отправляем сообщение об ошибке
+            sent_message = await message.answer(
                 i18n.get("error-threshold-invalid-format"),
                 reply_markup=get_threshold_input_keyboard(i18n, currency_id, condition_type, currency_type)
             )
+            
+            # Регистрируем новое сообщение
+            register_message(message.chat.id, sent_message.message_id)
             return
         
         # Get current price and validate threshold
@@ -589,13 +632,20 @@ async def handle_threshold_input(message: Message, state: FSMContext, i18n: Tran
             if not details_msg:  # Fallback if translation is missing
                 details_msg = f"Currency: {user_currency.currency}\nCondition: {condition_text}\nThreshold: {symbol}{threshold:.2f}\nCurrent price: {symbol}{current_price:.2f}"
             
-            await message.answer(
+            # Деактивируем предыдущие диалоги
+            await deactivate_previous_dialogs(message)
+            
+            # Отправляем новое сообщение
+            sent_message = await message.answer(
                 f"{success_msg}\n\n{details_msg}",
                 reply_markup=InlineKeyboardBuilder().button(
                     text=i18n.get("btn-back"),
                     callback_data=f"back_to_settings_{currency_id}"
                 ).as_markup()
             )
+            
+            # Регистрируем новое сообщение
+            register_message(message.chat.id, sent_message.message_id)
         
         # Clear state
         await state.clear()
@@ -871,7 +921,7 @@ async def handle_enable_alerts(callback: CallbackQuery, state: FSMContext, i18n:
         await callback.answer(i18n.get("error-occurred"))
 
 
-async def check_alert_conditions(bot, i18n, notification_service=None, shard_manager=None):
+async def check_alert_conditions(bot, i18n, notification_service=None):
     """Проверяет условия для алертов и отправляет уведомления."""
     async with get_db() as session:
         try:

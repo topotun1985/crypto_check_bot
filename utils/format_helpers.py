@@ -10,6 +10,9 @@ def validate_threshold(value: str, i18n) -> tuple[float | None, str]:
     - Integers: 1, 99, 101, 10000000
     - 1-2 decimal places: 1.1, 1.01, 2.99, 0.1, 0.77
     - 3 decimal places for values < 1: 0.001, 0.00286
+    
+    Constraints:
+    - Maximum value: 999999999 (9 digits) to fit within database numeric(18,8) field
     """
     # Remove leading/trailing whitespace
     value = value.strip()
@@ -19,6 +22,10 @@ def validate_threshold(value: str, i18n) -> tuple[float | None, str]:
         float_val = float(value)
         if float_val <= 0:
             return None, i18n.get("error-threshold-must-be-positive")
+        
+        # Check maximum value constraint (9 digits)
+        if float_val >= 1000000000:  # 10^9
+            return None, i18n.get("error-threshold-too-large")
             
         # Check if it's an integer
         if value.isdigit():
