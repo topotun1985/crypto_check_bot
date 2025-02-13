@@ -1,5 +1,5 @@
 import logging
-from aiogram import Router, types, F
+from aiogram import Router, types, F, Bot
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, LabeledPrice, PreCheckoutQuery, Message
 from database.queries import (
@@ -12,7 +12,7 @@ from database.queries import (
                                 add_user
                             )
 from database.database import get_db
-from keyboards.inline import subscription_menu, main_menu_button
+from keyboards.inline import subscription_menu, main_menu_button, back_to_menu_button
 from datetime import datetime, timedelta
 from fluentogram import TranslatorRunner
 from utils.dialog_manager import deactivate_previous_dialogs, register_message
@@ -29,12 +29,26 @@ SUBSCRIPTION_PLANS = {
 logger = logging.getLogger(__name__)
 
 
+@subscription_router.callback_query(F.data == "subscription_terms")
+async def subscription_terms_callback(callback: CallbackQuery, i18n: TranslatorRunner):
+    """Обработчик кнопки 'Условия подписок'"""
+    await show_subscription_terms(callback, i18n)
+    await callback.answer()
+
+
 async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
     """Отображает текущее состояние подписки и предлагает покупку."""
     user_id = message_or_callback.from_user.id
     try:
         # Деактивируем предыдущие диалоги
-        await deactivate_previous_dialogs(message_or_callback)
+        if isinstance(message_or_callback, Message):
+            bot = message_or_callback.bot
+            chat_id = message_or_callback.chat.id
+        else:
+            bot = message_or_callback.message.bot
+            chat_id = message_or_callback.message.chat.id
+            
+        await deactivate_previous_dialogs(chat_id, bot)
         
         async with get_db(telegram_id=message_or_callback.from_user.id) as session:
             subscription = await get_user_subscription(session, user_id)
@@ -58,7 +72,9 @@ async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
                 f"{i18n.get('plan-basic-description', limit=5)}\n",
                 f"{i18n.get('plan-standard-description', limit=10)}\n",
                 f"{i18n.get('plan-premium-description', limit=30)}\n\n",
-                i18n.get('subscription-validity-period')
+                i18n.get('subscription-validity-period'),
+                "\n\n",
+                i18n.get('subscription-terms-link')
             ])
 
             if isinstance(message_or_callback, Message):
@@ -86,7 +102,9 @@ async def back_to_subscription(callback: CallbackQuery, i18n: TranslatorRunner):
     """Обработчик кнопки возврата в главное меню из invoice"""
     try:
         # Деактивируем все предыдущие диалоги
-        await deactivate_previous_dialogs(callback)
+        bot = callback.message.bot
+        chat_id = callback.message.chat.id
+        await deactivate_previous_dialogs(chat_id, bot)
         
         # Удаляем сообщение с invoice
         await callback.message.delete()
@@ -173,6 +191,43 @@ async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery, i18n: Trans
             ok=False,
             error_message=i18n.get("alerts-error")
         )
+
+
+@subscription_router.message(Command("subscription_terms"))
+async def subscription_terms_command(message: Message, i18n: TranslatorRunner):
+    """Обработчик команды /subscription_terms"""
+    await show_subscription_terms(message, i18n)
+
+async def show_subscription_terms(message_or_callback, i18n: TranslatorRunner):
+    """Показывает условия подписок"""
+    try:
+        # Деактивируем предыдущие диалоги
+        if isinstance(message_or_callback, Message):
+            bot = message_or_callback.bot
+            chat_id = message_or_callback.chat.id
+        else:
+            bot = message_or_callback.message.bot
+            chat_id = message_or_callback.message.chat.id
+            
+        await deactivate_previous_dialogs(chat_id, bot)
+        
+        terms_text = i18n.get('subscription-terms-text')
+
+        # Отправляем сообщение с условиями и кнопкой назад
+        if isinstance(message_or_callback, Message):
+            msg = await message_or_callback.answer(terms_text, reply_markup=back_to_menu_button(i18n))
+        else:
+            msg = await message_or_callback.message.edit_text(terms_text, reply_markup=back_to_menu_button(i18n))
+
+        # Регистрируем сообщение для последующей деактивации
+        register_message(message_or_callback.from_user.id, msg.message_id)
+
+    except Exception as e:
+        logger.error(f"Error showing subscription terms: {e}")
+        if isinstance(message_or_callback, Message):
+            await message_or_callback.answer(i18n.get("error-occurred"))
+        else:
+            await message_or_callback.message.edit_text(i18n.get("error-occurred"))
 
 
 @subscription_router.message(F.successful_payment)

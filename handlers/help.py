@@ -19,7 +19,14 @@ async def show_help(message_or_callback, i18n: TranslatorRunner):
 
     try:
         # Деактивируем предыдущие диалоги
-        await deactivate_previous_dialogs(message_or_callback)
+        if isinstance(message_or_callback, Message):
+            bot = message_or_callback.bot
+            chat_id = message_or_callback.chat.id
+        else:
+            bot = message_or_callback.message.bot
+            chat_id = message_or_callback.message.chat.id
+            
+        await deactivate_previous_dialogs(chat_id, bot)
         
         text = "\n\n".join([
             i18n.get('help-text'),
