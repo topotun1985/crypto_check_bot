@@ -35,13 +35,13 @@ async def get_user(session: AsyncSession, telegram_id: int):
     
     Note: Сессия должна быть получена с правильным шардом на основе telegram_id
     """
-    logger.info(f"Getting user with telegram_id: {telegram_id}")
+    logger.debug(f"Getting user with telegram_id: {telegram_id}")
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalars().first()
     if user:
-        logger.info(f"Found user with id: {user.id} for telegram_id: {telegram_id}")
+        logger.debug(f"Found user with id: {user.id} for telegram_id: {telegram_id}")
     else:
-        logger.info(f"User not found for telegram_id: {telegram_id}")
+        logger.warning(f"User not found for telegram_id: {telegram_id}")  # Это оставляем warning, т.к. это важно
     return user
 
 

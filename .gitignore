@@ -41,6 +41,7 @@ ENV/
 
 config.py
 
+
 # Database
 *.sqlite3
 *.db

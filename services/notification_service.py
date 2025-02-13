@@ -1,7 +1,7 @@
 import json
 import asyncio
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 from datetime import datetime, timedelta
 from nats.aio.client import Client as NATS
 from nats.aio.errors import ErrTimeout, ErrNoServers
@@ -14,33 +14,7 @@ from utils.dialog_manager import deactivate_previous_dialogs, register_message
 
 logger = logging.getLogger(__name__)
 
-class GlobalRateLimiter:
-    """Глобальный ограничитель для всех сообщений бота"""
-    def __init__(self, messages_per_second: int = 30):
-        self.messages_per_second = messages_per_second
-        self.message_timestamps = []
-        self.lock = asyncio.Lock()
-
-    async def can_send(self) -> bool:
-        """Проверяет, можно ли отправить сообщение"""
-        async with self.lock:
-            now = datetime.now()
-            # Удаляем старые метки времени
-            self.message_timestamps = [
-                ts for ts in self.message_timestamps 
-                if now - ts < timedelta(seconds=1)
-            ]
-            
-            if len(self.message_timestamps) >= self.messages_per_second:
-                return False
-                
-            self.message_timestamps.append(now)
-            return True
-
-    async def wait_for_slot(self):
-        """Ожидает, пока не появится возможность отправить сообщение"""
-        while not await self.can_send():
-            await asyncio.sleep(0.1)
+from .rate_limiter import TelegramRateLimiter
 
 class NotificationService:
     def __init__(self, bot: Bot, translator_hub: TranslatorHub, nats_url: str = "nats://nats:4222"):
@@ -48,9 +22,9 @@ class NotificationService:
         self.translator_hub = translator_hub
         self.nats = NATS()
         self.nats_url = nats_url
-        self.user_rate_limit = 1  # сообщений в секунду для одного пользователя
-        self._last_sent: Dict[int, datetime] = {}
-        self.global_limiter = GlobalRateLimiter()
+        self.rate_limiter = TelegramRateLimiter()
+        self._processing_users: Set[int] = set()
+        self._processing_lock = asyncio.Lock()
 
     async def connect(self):
         """Подключение к NATS"""
@@ -130,12 +104,15 @@ class NotificationService:
                 "retry_count": 0
             }
             
+            # Устанавливаем высокий приоритет для всех уведомлений об алертах
+            data['priority'] = 'high'
+            
             # Публикуем в NATS
             json_data = json.dumps(data)
             logger.info(f"Publishing notification with data: {json_data}")
             
             await self.nats.publish(
-                "alerts",  # всегда используем основную очередь
+                "alerts.high",  # используем очередь с высоким приоритетом
                 json_data.encode()
             )
             
@@ -145,106 +122,92 @@ class NotificationService:
             logger.error(f"Error publishing notification: {e}")
             raise
 
-    async def _can_send_to_user(self, user_id: int) -> bool:
+    async def _can_send_to_user(self, user_id: int, priority: bool = False) -> bool:
         """Проверка rate limit для пользователя"""
-        now = datetime.now()
-        last_sent = self._last_sent.get(user_id)
-        if last_sent and (now - last_sent) < timedelta(seconds=1):
-            return False
-        self._last_sent[user_id] = now
-        return True
+        return await self.rate_limiter.can_send(user_id, priority)
 
     async def _notification_handler(self, msg):
         """Обработчик уведомлений из NATS"""
+        user_id = None
         try:
+            # Декодируем сообщение
             data = json.loads(msg.data.decode())
             user_id = data["user_id"]
             message = data["message"]
             keyboard = data.get("keyboard")
             retry_count = data.get("retry_count", 0)
-            
-            # Проверяем глобальный rate limit
-            await self.global_limiter.wait_for_slot()
-            
-            # Проверяем rate limit пользователя
-            if not await self._can_send_to_user(user_id):
-                if retry_count < 3:  # максимум 3 попытки
-                    # Откладываем отправку
-                    await asyncio.sleep(1)
-                    data["retry_count"] = retry_count + 1
-                    await self.nats.publish(
-                        "alerts.delayed",
-                        json.dumps(data).encode()
-                    )
-                return
-            
-            # Получаем чат для регистрации сообщения
-            chat = await self.bot.get_chat(user_id)
-            
-            # Получаем список активных сообщений для этого чата
-            from utils.dialog_manager import _get_chat_messages
-            active_messages = _get_chat_messages(chat.id)
-            
-            # Деактивируем все активные сообщения
-            messages_to_deactivate = active_messages.copy()
-            for msg_id in messages_to_deactivate:
-                try:
-                    await self.bot.edit_message_reply_markup(
-                        chat_id=chat.id,
-                        message_id=msg_id,
-                        reply_markup=None
-                    )
-                    active_messages.remove(msg_id)
-                    logger.info(f"Successfully removed keyboard from message {msg_id}")
-                except Exception as e:
-                    if "message to edit not found" in str(e).lower() or "message is not modified" in str(e).lower():
-                        active_messages.remove(msg_id)
-                        logger.info(f"Message {msg_id} was already removed or not found")
-                    else:
-                        logger.warning(f"Failed to remove keyboard from message {msg_id}: {e}")
-            
-            # Отправляем новое сообщение
-            logger.info(f"Preparing to send message. Keyboard data: {keyboard}")
-            
+            priority = data.get("priority", "normal")
+            is_priority = priority == "high"
+
+            # Проверяем блокировку
+            async with self._processing_lock:
+                if user_id in self._processing_users:
+                    # Пользователь уже обрабатывается
+                    if retry_count < 3:
+                        await asyncio.sleep(2)
+                        data["retry_count"] = retry_count + 1
+                        await self.nats.publish(
+                            "alerts.delayed",
+                            json.dumps(data).encode()
+                        )
+                    return
+                # Блокируем пользователя
+                self._processing_users.add(user_id)
+
             try:
-                if keyboard:
-                    # Создаем InlineKeyboardMarkup из словаря
-                    keyboard_markup = InlineKeyboardMarkup(**keyboard)
-                    sent_message = await self.bot.send_message(
-                        user_id,
-                        message,
-                        reply_markup=keyboard_markup
-                    )
-                    # Регистрируем сообщение с клавиатурой
-                    register_message(chat.id, sent_message.message_id)
-                    logger.info(f"Sent message with keyboard to user {user_id}")
-                else:
-                    sent_message = await self.bot.send_message(user_id, message)
-                    logger.info(f"Sent message without keyboard to user {user_id}")
+                # Дожидаемся возможности отправить сообщение с учетом rate limit
+                can_send = await self.rate_limiter.wait_for_slot(user_id, is_priority)
+                if not can_send:
+                    # Если не можем отправить сейчас, добавляем в отложенные
+                    if retry_count < 3:
+                        await asyncio.sleep(1)
+                        data["retry_count"] = retry_count + 1
+                        await self.nats.publish(
+                            "alerts.delayed",
+                            json.dumps(data).encode()
+                        )
+                    return
+
+                # Деактивируем предыдущие диалоги перед отправкой нового
+                await deactivate_previous_dialogs(user_id, self.bot)
                 
-                logger.info(f"Successfully sent notification to user {user_id}")
-                
+                # Отправляем сообщение
+                sent_message = await self.bot.send_message(
+                    chat_id=user_id,
+                    text=message,
+                    reply_markup=keyboard if keyboard else None
+                )
+                register_message(user_id, sent_message.message_id)
+                logger.info(f"Successfully sent notification {sent_message.message_id} to user {user_id}")
+
             except Exception as e:
-                logger.error(f"Error sending message: {e}. Keyboard data: {keyboard}")
-                if retry_count < 3:  # максимум 3 попытки
+                logger.error(f"Error sending notification to user {user_id}: {str(e)}")
+                if retry_count < 3:
+                    await asyncio.sleep(2)
                     data["retry_count"] = retry_count + 1
                     await self.nats.publish(
                         "alerts.delayed",
                         json.dumps(data).encode()
                     )
-                raise
-            
+
+            finally:
+                # Разблокируем пользователя
+                async with self._processing_lock:
+                    self._processing_users.remove(user_id)
+
         except Exception as e:
-            logger.error(f"Error sending message to user {user_id if 'user_id' in locals() else 'unknown'}: {e}")
+            logger.error(f"Critical error processing notification: {str(e)}")
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
 
     async def _delayed_notification_handler(self, msg):
         """Обработчик отложенных уведомлений"""
+        await asyncio.sleep(5)  # Ждем 5 секунд перед повторной обработкой
         await self._notification_handler(msg)
 
     async def close(self):
         """Закрытие соединения с NATS"""
         try:
             await self.nats.close()
-            logger.info("NATS connection closed")
         except Exception as e:
             logger.error(f"Error closing NATS connection: {e}")
+            raise

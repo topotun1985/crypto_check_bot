@@ -1,12 +1,12 @@
 import logging
 from aiogram import Router, F
+from datetime import datetime
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from fluentogram import TranslatorRunner
 from database.database import get_db
 from database.queries import get_all_crypto_rates, get_dollar_rate, get_user
 from services.redis_cache import RedisCache
 from keyboards.inline import back_to_menu_button, get_rates_keyboard
-from datetime import datetime
 from config import CRYPTO_NAMES
 from utils.format_helpers import format_crypto_price
 from utils.dialog_manager import register_message

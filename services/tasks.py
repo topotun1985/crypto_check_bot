@@ -42,7 +42,7 @@ class BackgroundTasks:
                     try:
                         if price := await self.crypto_service.get_binance_price(symbol):
                             rates[symbol] = price
-                            logger.info(f"{symbol}: {price} USDT")
+                            logger.debug(f"{symbol}: {price} USDT")  # Меняем уровень логирования на debug
                     except Exception as e:
                         logger.error(f"Ошибка получения курса {symbol}: {e}")
 

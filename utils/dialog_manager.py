@@ -20,16 +20,25 @@ def register_message(chat_id: int, message_id: int):
     messages.add(message_id)
     logger.info(f"Registered new message {message_id} for chat {chat_id}")
 
-async def deactivate_previous_dialogs(message: types.Message, keep_message_id: int | None = None):
+async def deactivate_previous_dialogs(message: types.Message | int, bot: Bot | None = None, keep_message_id: int | None = None):
     """
     Деактивирует предыдущие диалоги пользователя, удаляя клавиатуру.
     
     Args:
-        message: Текущее сообщение
+        message: Текущее сообщение или chat_id
+        bot: Объект бота (необходим, если передан chat_id)
         keep_message_id: ID сообщения, которое нужно оставить (опционально)
     """
     try:
-        chat_id = message.chat.id
+        # Определяем chat_id и bot
+        if isinstance(message, types.Message):
+            chat_id = message.chat.id
+            bot = message.bot
+        else:
+            chat_id = message
+            if bot is None:
+                raise ValueError("Bot object is required when using chat_id")
+
         messages = _get_chat_messages(chat_id)
         messages_to_deactivate = messages.copy()
         
@@ -39,7 +48,7 @@ async def deactivate_previous_dialogs(message: types.Message, keep_message_id: i
                 continue
                 
             try:
-                await message.bot.edit_message_reply_markup(
+                await bot.edit_message_reply_markup(
                     chat_id=chat_id,
                     message_id=msg_id,
                     reply_markup=None

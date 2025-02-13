@@ -5,6 +5,7 @@ from .rates import rates_router
 from .my_currencies import my_currencies_router
 from .choose_currency import choose_currency_router
 from .notification_settings import notification_router
+from .unsupported import unsupported_router  # Добавляем новый обработчик
 
 def register_all_handlers(dp):
     """Register all handlers."""
@@ -15,6 +16,7 @@ def register_all_handlers(dp):
     dp.include_router(my_currencies_router)
     dp.include_router(choose_currency_router)
     dp.include_router(notification_router)
+    dp.include_router(unsupported_router)  # Добавляем последним, чтобы он ловил все оставшиеся сообщения
 
 __all__ = [
     'register_all_handlers',

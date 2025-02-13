@@ -98,11 +98,12 @@ async def main():
             tasks.is_running = False
             logger.info('Background tasks stopped')
         
-        # Закрываем соединение с NATS
+        # Закрываем соединение с NATS и останавливаем rate limiter
         if notification_service:
             with suppress(Exception):
                 await notification_service.close()
-                logger.info('NATS connection closed')
+                await notification_service.rate_limiter.stop()
+                logger.info('NATS connection closed and rate limiter stopped')
         
         # Закрываем сессию бота
         if bot:
@@ -152,12 +153,13 @@ async def main():
         )
         tasks.i18n = translator_hub.get_translator_by_locale(locale='ru')
         
-        # Подключаемся к NATS
+        # Подключаемся к NATS и запускаем rate limiter
         try:
             await notification_service.connect()
-            logger.info("Successfully connected to NATS")
+            await notification_service.rate_limiter.start()
+            logger.info("Successfully connected to NATS and started rate limiter")
         except Exception as e:
-            logger.error(f"Failed to connect to NATS: {e}")
+            logger.error(f"Failed to initialize services: {e}")
             raise
         
         await tasks.start()
