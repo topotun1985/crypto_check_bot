@@ -164,8 +164,8 @@ async def main():
         
         await tasks.start()
         
-        # TODO: Временно отключаем установку команд
-        # await set_bot_commands(bot, translator_hub)
+
+        await set_bot_commands(bot, translator_hub)
         
         # Устанавливаем обработчики сигналов
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGABRT):

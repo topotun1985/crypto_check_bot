@@ -66,9 +66,11 @@ show-in-rub = in rubles
 show-in-usd = in dollars
 rates-error = ❌ An error occurred while fetching rates. Please try again later.
 # Commands
-cmd-start = Start bot
-cmd-help = Help
-cmd-subscription = Manage subscription
+cmd-start = Запустить бота
+cmd-help = Помощь
+cmd-subscription = Управление подпиской
+cmd-subscription-terms = Условия подписок
+cmd-support = Поддержка
 my-currencies-empty = ⚠️ You haven't selected any coins yet
 alerts-no-currencies = ⚠️ You have no tracked coins. Add coins in the "My coins" section.
 subscription-limit-reached = ⚠️ You have reached the limit of tracked coins for your subscription! To add more coins, a different subscription plan is required.

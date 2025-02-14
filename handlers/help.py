@@ -18,15 +18,6 @@ async def show_help(message_or_callback, i18n: TranslatorRunner):
     logger.info(f"Help command received from user {user_id}")
 
     try:
-        # Деактивируем предыдущие диалоги
-        if isinstance(message_or_callback, Message):
-            bot = message_or_callback.bot
-            chat_id = message_or_callback.chat.id
-        else:
-            bot = message_or_callback.message.bot
-            chat_id = message_or_callback.message.chat.id
-            
-        await deactivate_previous_dialogs(chat_id, bot)
         
         text = "\n\n".join([
             i18n.get('help-text'),
@@ -43,11 +34,20 @@ async def show_help(message_or_callback, i18n: TranslatorRunner):
         logger.info(f"Help text generated successfully for user {user_id}")
 
         if isinstance(message_or_callback, Message):
+            # Команда - создаем новое сообщение
+            await deactivate_previous_dialogs(message_or_callback.chat.id, message_or_callback.bot)
             sent_message = await message_or_callback.answer(text, reply_markup=back_to_menu_button(i18n))
             register_message(message_or_callback.chat.id, sent_message.message_id)
         elif isinstance(message_or_callback, CallbackQuery):
-            await message_or_callback.message.edit_text(text, reply_markup=back_to_menu_button(i18n))
-            register_message(message_or_callback.message.chat.id, message_or_callback.message.message_id)
+            if message_or_callback.message.reply_markup:
+                # Из меню - редактируем
+                await message_or_callback.message.edit_text(text, reply_markup=back_to_menu_button(i18n))
+                register_message(message_or_callback.message.chat.id, message_or_callback.message.message_id)
+            else:
+                # Отдельная кнопка - новое сообщение
+                await deactivate_previous_dialogs(message_or_callback.message.chat.id, message_or_callback.message.bot)
+                sent_message = await message_or_callback.message.answer(text, reply_markup=back_to_menu_button(i18n))
+                register_message(message_or_callback.message.chat.id, sent_message.message_id)
 
         logger.info(f"Help message sent to user {user_id}")
 

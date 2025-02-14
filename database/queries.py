@@ -164,7 +164,7 @@ async def format_subscription_expires(subscription) -> str:
         return "∞"  # или можно использовать перевод
     if not subscription.expires_at:
         return ""
-    return subscription.expires_at.strftime('%d.%m.%Y')
+    return subscription.expires_at.strftime('%d.%m.%Y %H:%M')
 
 
 async def get_user_currency_count(session: AsyncSession, telegram_id: int) -> int:

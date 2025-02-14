@@ -21,9 +21,9 @@ from .start import back_to_menu, get_subscription_info  # Для правиль�
 subscription_router = Router()
 
 SUBSCRIPTION_PLANS = {
-    "basic": {"limit": 5, "price": 1}, 
-    "standard": {"limit": 10, "price": 1}, 
-    "premium": {"limit": 30, "price": 1}, 
+    "basic": {"limit": 4, "price": 1}, 
+    "standard": {"limit": 7, "price": 1}, 
+    "premium": {"limit": 10, "price": 1}, 
 }
 
 logger = logging.getLogger(__name__)
@@ -40,15 +40,6 @@ async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
     """Отображает текущее состояние подписки и предлагает покупку."""
     user_id = message_or_callback.from_user.id
     try:
-        # Деактивируем предыдущие диалоги
-        if isinstance(message_or_callback, Message):
-            bot = message_or_callback.bot
-            chat_id = message_or_callback.chat.id
-        else:
-            bot = message_or_callback.message.bot
-            chat_id = message_or_callback.message.chat.id
-            
-        await deactivate_previous_dialogs(chat_id, bot)
         
         async with get_db(telegram_id=message_or_callback.from_user.id) as session:
             subscription = await get_user_subscription(session, user_id)
@@ -69,20 +60,29 @@ async def show_subscription_menu(message_or_callback, i18n: TranslatorRunner):
                 f"{expires_message}\n\n",
                 f"{i18n.get('subscription-currencies', current=currency_count, max=currency_limit)}\n\n",
                 f"{i18n.get('subscription-plans')}\n\n",
-                f"{i18n.get('plan-basic-description', limit=5)}\n",
-                f"{i18n.get('plan-standard-description', limit=10)}\n",
-                f"{i18n.get('plan-premium-description', limit=30)}\n\n",
+                f"{i18n.get('plan-basic-description', limit=4)}\n",
+                f"{i18n.get('plan-standard-description', limit=7)}\n",
+                f"{i18n.get('plan-premium-description', limit=10)}\n\n",
                 i18n.get('subscription-validity-period'),
                 "\n\n",
                 i18n.get('subscription-terms-link')
             ])
 
             if isinstance(message_or_callback, Message):
+                # Команда - создаем новое сообщение
+                await deactivate_previous_dialogs(message_or_callback.chat.id, message_or_callback.bot)
                 sent_message = await message_or_callback.answer(text, reply_markup=subscription_menu(i18n))
                 register_message(message_or_callback.chat.id, sent_message.message_id)
             elif isinstance(message_or_callback, CallbackQuery):
-                await message_or_callback.message.edit_text(text, reply_markup=subscription_menu(i18n))
-                register_message(message_or_callback.message.chat.id, message_or_callback.message.message_id)
+                if message_or_callback.message.reply_markup:
+                    # Из меню - редактируем
+                    await message_or_callback.message.edit_text(text, reply_markup=subscription_menu(i18n))
+                    register_message(message_or_callback.message.chat.id, message_or_callback.message.message_id)
+                else:
+                    # Отдельная кнопка - новое сообщение
+                    await deactivate_previous_dialogs(message_or_callback.message.chat.id, message_or_callback.message.bot)
+                    sent_message = await message_or_callback.message.answer(text, reply_markup=subscription_menu(i18n))
+                    register_message(message_or_callback.message.chat.id, sent_message.message_id)
     except Exception as e:
         logger.error(f"Error in show_subscription_menu for user {user_id}: {str(e)}")
 
@@ -154,23 +154,31 @@ async def process_buy_subscription(callback: CallbackQuery, i18n: TranslatorRunn
 
     # Если подписка не активна — продолжаем оформление
     price = SUBSCRIPTION_PLANS[plan]["price"]
-    prices = [LabeledPrice(label=f"Подписка {plan.capitalize()}", amount=price)]
+    prices = [LabeledPrice(
+        label=i18n.get('subscription-price-label', plan=plan.capitalize()),amount=price
+    )]
 
     # Деактивируем предыдущие диалоги перед отправкой invoice
     await deactivate_previous_dialogs(callback.message)
 
     # Создаем клавиатуру с кнопкой оплаты и кнопкой назад
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=f"Отправить {price} ⭐️", pay=True)],
-        [types.InlineKeyboardButton(text=i18n.get("btn-back"), callback_data="back_to_subscription")]
+        [types.InlineKeyboardButton(
+            text=i18n.get('subscription-payment-button', price=price),
+            pay=True
+        )],
+        [types.InlineKeyboardButton(
+            text=i18n.get("btn-back"),
+            callback_data="back_to_subscription"
+        )]
     ])
 
     # Отправляем invoice и сохраняем ID сообщения
     invoice_message = await callback.message.answer_invoice(
-        title=f"{plan.capitalize()} подписка",
-        description=f"Оформите подписку {plan.capitalize()} на 30 дней",
-        payload=f"subscription_{plan}",  # Возвращаемся к простому payload
-        provider_token="",  # Telegram Stars → оставляем пустым
+        title=i18n.get('subscription-invoice-title', plan=plan.capitalize()),
+        description=i18n.get('subscription-invoice-description', plan=plan.capitalize()),
+        payload=f"subscription_{plan}",
+        provider_token="",
         currency="XTR",
         prices=prices,
         reply_markup=keyboard
@@ -201,26 +209,25 @@ async def subscription_terms_command(message: Message, i18n: TranslatorRunner):
 async def show_subscription_terms(message_or_callback, i18n: TranslatorRunner):
     """Показывает условия подписок"""
     try:
-        # Деактивируем предыдущие диалоги
-        if isinstance(message_or_callback, Message):
-            bot = message_or_callback.bot
-            chat_id = message_or_callback.chat.id
-        else:
-            bot = message_or_callback.message.bot
-            chat_id = message_or_callback.message.chat.id
-            
-        await deactivate_previous_dialogs(chat_id, bot)
         
         terms_text = i18n.get('subscription-terms-text')
 
         # Отправляем сообщение с условиями и кнопкой назад
         if isinstance(message_or_callback, Message):
+            # Команда - создаем новое сообщение
+            await deactivate_previous_dialogs(message_or_callback.chat.id, message_or_callback.bot)
             msg = await message_or_callback.answer(terms_text, reply_markup=back_to_menu_button(i18n))
-        else:
-            msg = await message_or_callback.message.edit_text(terms_text, reply_markup=back_to_menu_button(i18n))
-
-        # Регистрируем сообщение для последующей деактивации
-        register_message(message_or_callback.from_user.id, msg.message_id)
+            register_message(message_or_callback.chat.id, msg.message_id)
+        elif isinstance(message_or_callback, CallbackQuery):
+            if message_or_callback.message.reply_markup:
+                # Из меню - редактируем
+                msg = await message_or_callback.message.edit_text(terms_text, reply_markup=back_to_menu_button(i18n))
+                register_message(message_or_callback.message.chat.id, msg.message_id)
+            else:
+                # Отдельная кнопка - новое сообщение
+                await deactivate_previous_dialogs(message_or_callback.message.chat.id, message_or_callback.message.bot)
+                msg = await message_or_callback.message.answer(terms_text, reply_markup=back_to_menu_button(i18n))
+                register_message(message_or_callback.message.chat.id, msg.message_id)
 
     except Exception as e:
         logger.error(f"Error showing subscription terms: {e}")
@@ -248,7 +255,7 @@ async def process_successful_payment(message: Message, i18n: TranslatorRunner):
             user_id = message.from_user.id
             
             # Устанавливаем срок действия подписки (1 день)
-            expires_at = datetime.utcnow() + timedelta(days=1)
+            expires_at = datetime.utcnow() + timedelta(days=30)
             
             # Обновляем подписку в базе
             await add_subscription(session, user_id, plan, expires_at)

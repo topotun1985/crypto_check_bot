@@ -43,7 +43,7 @@ async def start_command(message: Message, i18n: TranslatorRunner):
             await deactivate_previous_dialogs(message)
             
             user = await get_user(session, message.from_user.id)
-            username = message.from_user.full_name
+            username = message.from_user.full_name or i18n.get('default-username')
 
             if not user:
                 await add_user(session, message.from_user.id, username)
