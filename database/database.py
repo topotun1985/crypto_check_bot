@@ -24,8 +24,12 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{D
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
-    pool_size=5,
-    max_overflow=10
+    # Оптимизированные настройки пула для 30,000 пользователей
+    pool_size=20,           # Базовый размер пула
+    max_overflow=30,        # Максимальное количество дополнительных соединений
+    pool_timeout=30,        # Таймаут ожидания соединения из пула
+    pool_recycle=1800,      # Переподключение каждые 30 минут
+    pool_pre_ping=True      # Проверка соединения перед использованием
 )
 
 # Создаём фабрику сессий

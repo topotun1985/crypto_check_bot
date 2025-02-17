@@ -10,6 +10,8 @@ from keyboards.inline import back_to_menu_button, get_rates_keyboard
 from config import CRYPTO_NAMES
 from utils.format_helpers import format_crypto_price
 from utils.dialog_manager import register_message
+from monitoring.decorators import track_request_latency, track_db_query, track_api_errors
+from monitoring.prometheus_metrics import ACTIVE_USERS, ERROR_COUNTER
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ rates_router = Router()
 
 
 @rates_router.callback_query(F.data.startswith("toggle_currency_display_"))
+@track_request_latency(handler_name="toggle_currency_display")
 async def toggle_currency_display(callback: CallbackQuery, i18n: TranslatorRunner):
     """Переключает отображение валют между рублями и долларами."""
     try:
@@ -28,6 +31,7 @@ async def toggle_currency_display(callback: CallbackQuery, i18n: TranslatorRunne
 
 
 @rates_router.callback_query(F.data == "show_all_currency")
+@track_request_latency(handler_name="show_all_rates")
 async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_in_rub: bool = True):
     """Показывает все курсы криптовалют."""
     try:
@@ -41,17 +45,33 @@ async def show_all_rates(callback: CallbackQuery, i18n: TranslatorRunner, show_i
                 show_in_rub = False
             
             # Пробуем получить курсы из Redis
-            crypto_rates = await redis_cache.get_crypto_rates()
-            dollar_rate = await redis_cache.get_dollar_rate()
+            try:
+                crypto_rates = await redis_cache.get_crypto_rates()
+                dollar_rate = await redis_cache.get_dollar_rate()
+            except Exception as e:
+                ERROR_COUNTER.labels(error_type='redis_error', shard='default').inc()
+                logger.error(f"Redis error: {e}")
+                crypto_rates = None
+                dollar_rate = None
             
             # Если в Redis нет данных, берем из БД
             if not crypto_rates:
-                db_rates = await get_all_crypto_rates(session)
-                crypto_rates = {rate.currency: float(rate.price) for rate in db_rates}
+                try:
+                    db_rates = await get_all_crypto_rates(session)
+                    crypto_rates = {rate.currency: float(rate.price) for rate in db_rates}
+                except Exception as e:
+                    ERROR_COUNTER.labels(error_type='db_error', shard='default').inc()
+                    logger.error(f"Database error while fetching crypto rates: {e}")
+                    raise
                 
             if not dollar_rate and show_in_rub:
-                db_dollar = await get_dollar_rate(session)
-                dollar_rate = float(db_dollar.price) if db_dollar else None
+                try:
+                    db_dollar = await get_dollar_rate(session)
+                    dollar_rate = float(db_dollar.price) if db_dollar else None
+                except Exception as e:
+                    ERROR_COUNTER.labels(error_type='db_error', shard='default').inc()
+                    logger.error(f"Database error while fetching dollar rate: {e}")
+                    raise
             
             messages = [i18n.get("rates-header"), ""]
             

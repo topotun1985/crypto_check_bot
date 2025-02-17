@@ -14,12 +14,14 @@ from states.alert_states import AlertStates
 import logging
 from sqlalchemy import select
 from decimal import Decimal
+from monitoring.decorators import track_request_latency
 
 logger = logging.getLogger(__name__)
 
 alerts_router = Router()
 
 @alerts_router.callback_query(F.data == "show_alerts")
+@track_request_latency(handler_name="show_alerts")
 async def show_alerts(callback: CallbackQuery, i18n: TranslatorRunner):
     """Показывает все алерты пользователя."""
     try:
@@ -59,6 +61,7 @@ async def show_alerts(callback: CallbackQuery, i18n: TranslatorRunner):
         )
 
 @alerts_router.callback_query(F.data == "add_alert")
+@track_request_latency(handler_name="start_add_alert")
 async def start_add_alert(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     """Начинает процесс добавления нового алерта."""
     try:
@@ -87,6 +90,7 @@ async def start_add_alert(callback: CallbackQuery, state: FSMContext, i18n: Tran
         )
 
 @alerts_router.callback_query(F.data.startswith("select_currency_"))
+@track_request_latency(handler_name="handle_currency_selection")
 async def handle_currency_selection(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     """Обрабатывает выбор валюты для алерта."""
     currency_id = int(callback.data.split("_")[-1])
@@ -122,6 +126,7 @@ async def handle_currency_selection(callback: CallbackQuery, state: FSMContext, 
         )
 
 @alerts_router.message(AlertStates.waiting_for_threshold)
+@track_request_latency(handler_name="handle_threshold")
 async def handle_threshold(message: Message, state: FSMContext, i18n: TranslatorRunner):
     """Обрабатывает ввод порогового значения для алерта."""
     try:

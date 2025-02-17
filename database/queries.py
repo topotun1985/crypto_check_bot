@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 # Константы для максимального количества валют по тарифам
 SUBSCRIPTION_LIMITS = {
     "free": 1,
-    "basic": 5,
-    "standard": 10,
-    "premium": 30
+    "basic": 4,
+    "standard": 7,
+    "premium": 10
 }
 
 async def add_user(session: AsyncSession, telegram_id: int, username: str, language_code: str = None):
@@ -21,6 +21,8 @@ async def add_user(session: AsyncSession, telegram_id: int, username: str, langu
     
     Note: Сессия должна быть получена с правильным шардом на основе telegram_id
     """
+    from monitoring.prometheus_metrics import NEW_SUBSCRIPTIONS
+    
     new_user = User(
         telegram_id=telegram_id, 
         username=username,
@@ -28,7 +30,10 @@ async def add_user(session: AsyncSession, telegram_id: int, username: str, langu
     )
     session.add(new_user)
     await session.commit()
-    await add_subscription(session, telegram_id, "free")  
+    await add_subscription(session, telegram_id, "free")
+    
+    # Увеличиваем счетчик новых подписок
+    NEW_SUBSCRIPTIONS.labels(shard='main').inc()
 
 async def get_user(session: AsyncSession, telegram_id: int):
     """Получает пользователя по telegram_id.

@@ -14,6 +14,7 @@ from middlewares.i18n import TranslatorRunnerMiddleware
 from utils.i18n import create_translator_hub
 from services.tasks import BackgroundTasks
 from services.notification_service import NotificationService
+from monitoring.setup import MonitoringService
 
 
 from config import BOT_COMMANDS
@@ -45,40 +46,31 @@ def get_commands_for_language(i18n: TranslatorRunner) -> list[BotCommand]:
 
 
 async def set_bot_commands(bot: Bot, translator_hub):
-    """Устанавливает команды бота для всех языков."""
-    # Получаем список всех поддерживаемых языков через поле locale каждого транслятора
-    languages = [translator.locale for translator in translator_hub.translators]
+    """Устанавливает команды бота."""
+    # Удаляем все существующие команды
+    try:
+        # Удаляем команды без языка
+        await bot.delete_my_commands(scope=BotCommandScopeDefault())
+        # Удаляем команды для каждого языка
+        for lang in ["ru", "en"]:
+            await bot.delete_my_commands(scope=BotCommandScopeDefault(), language_code=lang)
+    except Exception as e:
+        logger.warning(f"Failed to delete commands: {e}")
     
-    # Создаем словарь с командами для каждого языка
-    commands_by_language: Dict[str, list[BotCommand]] = {}
-    for lang in languages:
-        i18n = translator_hub.get_translator_by_locale(locale=lang)
-        commands_by_language[lang] = get_commands_for_language(i18n)
+    # Создаем команды на английском
+    commands = [
+        BotCommand(command="start", description="Start the bot"),
+        BotCommand(command="help", description="Help"),
+        BotCommand(command="subscription", description="Manage subscription"),
+        BotCommand(command="subscription_terms", description="Subscription terms"),
+        BotCommand(command="support", description="Support")
+    ]
     
-    # Устанавливаем английские команды как дефолтные
-    await bot.set_my_commands(
-        commands_by_language["en"],
-        scope=BotCommandScopeDefault()
-    )
-    
-    # Устанавливаем команды для пользователей каждого языка
-    async with get_db() as session:
-        for lang in languages:
-            if lang == "en":  # пропускаем английский, так как он уже установлен как дефолтный
-                continue
-                
-            result = await session.execute(
-                select(User.telegram_id)
-                .where(User.language == lang)
-            )
-            users = result.scalars().all()
-            
-            # Устанавливаем команды для каждого пользователя этого языка
-            for user_id in users:
-                await bot.set_my_commands(
-                    commands_by_language[lang],
-                    scope=BotCommandScopeChat(chat_id=user_id)
-                )
+    # Устанавливаем команды
+    try:
+        await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+    except Exception as e:
+        logger.warning(f"Failed to set commands: {e}")
 
 # Функция конфигурирования и запуска бота
 async def main():
@@ -86,10 +78,11 @@ async def main():
     bot = None
     notification_service = None
     tasks = None
+    monitoring_service = None
     
     # Функция для корректного завершения работы
     async def shutdown(signal_type=None):
-        nonlocal bot, notification_service, tasks
+        nonlocal bot, notification_service, tasks, monitoring_service
         
         logger.info(f'Received signal {signal_type}, shutting down...')
         
@@ -97,6 +90,11 @@ async def main():
         if tasks:
             tasks.is_running = False
             logger.info('Background tasks stopped')
+            
+        # Останавливаем мониторинг
+        if monitoring_service:
+            await monitoring_service.stop()
+            logger.info('Monitoring service stopped')
         
         # Закрываем соединение с NATS и останавливаем rate limiter
         if notification_service:
@@ -164,6 +162,16 @@ async def main():
         
         await tasks.start()
         
+        # Инициализируем и запускаем мониторинг
+        monitoring_service = MonitoringService(
+            bot=bot,
+            prometheus_port=9091,
+            alerter_port=9087,
+            channel_id="-1002266901682",
+            admin_id=855277058
+        )
+        await monitoring_service.start()
+        logger.info("Monitoring service started")
 
         await set_bot_commands(bot, translator_hub)
         

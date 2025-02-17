@@ -30,12 +30,14 @@ async def get_subscription_info(session: AsyncSession, telegram_id: int, i18n: T
 
 
 from utils.dialog_manager import deactivate_previous_dialogs, register_message
+from handlers.decorators import track_handler_metrics
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 @start_router.message(Command("start"))
+@track_handler_metrics('start_command')
 async def start_command(message: Message, i18n: TranslatorRunner):
     async with get_db() as session:
         try:
@@ -46,8 +48,23 @@ async def start_command(message: Message, i18n: TranslatorRunner):
             username = message.from_user.full_name or i18n.get('default-username')
 
             if not user:
-                await add_user(session, message.from_user.id, username)
-                await session.commit()  
+                # Используем language_code из Telegram
+                language_code = message.from_user.language_code
+                # Список поддерживаемых языков
+                supported_languages = ['de', 'en', 'es', 'fr', 'it', 'pt', 'ru']
+                
+                if language_code:
+                    # Берем первые 2 символа кода языка (ru-RU -> ru)
+                    lang = language_code.lower()[:2]
+                    if lang in supported_languages:
+                        language_code = lang
+                    else:
+                        language_code = 'en'  # По умолчанию английский
+                else:
+                    language_code = 'en'  # Если язык не определен
+                
+                await add_user(session, message.from_user.id, username, language_code)
+                await session.commit()
 
             subscription_plan, expires_message, currency_count, currency_limit = await get_subscription_info(
                 session, message.from_user.id, i18n

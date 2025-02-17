@@ -7,6 +7,7 @@ from .choose_currency import choose_currency_router
 from .notification_settings import notification_router
 from .unsupported import unsupported_router 
 from .support import support_router
+from .test_alerts import router as test_alerts_router
 
 def register_all_handlers(dp):
     """Register all handlers."""
@@ -18,6 +19,7 @@ def register_all_handlers(dp):
     dp.include_router(choose_currency_router)
     dp.include_router(notification_router)
     dp.include_router(support_router)
+    dp.include_router(test_alerts_router)
     dp.include_router(unsupported_router)  # Добавляем последним, чтобы он ловил все оставшиеся сообщения
 
 __all__ = [

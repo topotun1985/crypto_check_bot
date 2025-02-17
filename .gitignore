@@ -39,7 +39,7 @@ ENV/
 .env.local
 .env.docker
 
-config.py
+# config.py
 
 
 # Database

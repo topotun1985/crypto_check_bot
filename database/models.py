@@ -7,7 +7,7 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     telegram_id = Column(BigInteger, unique=True, nullable=False)
     username = Column(String(70))
     language = Column(String, default="en")
@@ -22,8 +22,8 @@ class User(Base):
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     plan = Column(String)
     expires_at = Column(TIMESTAMP)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -35,8 +35,8 @@ class Subscription(Base):
 
 class UserCurrency(Base):
     __tablename__ = "user_currencies"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     currency = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -80,7 +80,7 @@ class Alert(Base):
 
 class CryptoRate(Base):
     __tablename__ = "crypto_rates"
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     currency = Column(String, unique=True, nullable=False)
     price = Column(DECIMAL(18,8), nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -89,7 +89,7 @@ class CryptoRate(Base):
 
 class DollarRate(Base):
     __tablename__ = "dollar_rates"
-    id = Column(Integer, primary_key=True, default=1)
+    id = Column(BigInteger, primary_key=True, default=1)
     price = Column(DECIMAL(18,8), nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow)

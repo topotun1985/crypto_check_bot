@@ -1,0 +1,164 @@
+groups:
+  - name: crypto_bot_alerts
+    rules:
+      # Критические алерты
+      - alert: HighErrorRate
+        expr: sum(rate(bot_errors_total[1m])) by (error_type, shard) > 0.2
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 Высокий уровень ошибок"
+          description: "Скорость ошибок: {{ $value | humanize }} в секунду"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 Сервис недоступен"
+          description: "Сервис {{ $labels.job }} не отвечает"
+
+      # Предупреждения о производительности
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum by (operation, le) (rate(bot_request_duration_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Высокая задержка запросов"
+          description: "95-й процентиль задержки: {{ $value | humanize }}s"
+
+      - alert: HighMemoryUsage
+        expr: (bot_memory_usage_bytes / 1024 / 1024) > 900
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Высокое потребление памяти"
+          description: "Использование памяти: {{ $value | humanize }}MB"
+
+      - alert: HighCPUUsage
+        expr: bot_cpu_usage_percent{shard="main"} > 50
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Высокая нагрузка на CPU"
+          description: "Использование CPU: {{ $value }}%"
+
+      # База данных
+      - alert: DatabaseConnectionsHigh
+        expr: bot_db_connections > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Много подключений к БД"
+          description: "Активных подключений: {{ $value }}"
+
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(bot_db_query_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Медленные запросы к БД"
+          description: "95-й процентиль времени запроса: {{ $value | humanize }}s"
+
+      # Мониторинг пользователей
+      - alert: UserDropOff
+        expr: (delta(bot_active_users[24h]) / bot_active_users offset 24h) < -0.1
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "📉 Падение активных пользователей"
+          description: "Снижение активных пользователей более чем на 10% за 24 часа"
+
+      - alert: HighPremiumChurn
+        expr: (delta(bot_premium_users[24h]) / bot_premium_users offset 24h) < -0.05
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "💎 Отток премиум пользователей"
+          description: "Снижение премиум пользователей более чем на 5% за 24 часа"
+
+      # Redis
+      - alert: RedisErrors
+        expr: increase(bot_errors_total{error_type=~"redis.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "📛 Ошибки Redis"
+          description: "Обнаружены ошибки при работе с Redis"
+
+      # Очереди NATS
+      - alert: HighQueueLag
+        expr: bot_queue_lag_seconds > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Высокая задержка в очереди"
+          description: "Задержка в очереди {{ $labels.queue_name }}: {{ $value | humanize }}s"
+
+      - alert: LargeQueueSize
+        expr: bot_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Большая очередь"
+          description: "Размер очереди {{ $labels.queue_name }}: {{ $value }} сообщений"
+
+      # Бэкапы
+      - alert: BackupFailure
+        expr: bot_backup_status{type="daily"} == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "📥 Ошибка бэкапа"
+          description: "Последний бэкап завершился с ошибкой"
+
+      - alert: SlowBackup
+        expr: histogram_quantile(0.95, rate(bot_backup_duration_seconds_bucket[1h])) > 300
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "⏱️ Медленный бэкап"
+          description: "95-й процентиль времени бэкапа: {{ $value | humanize }}s"
+
+      # Использование диска
+      - alert: DiskSpaceCritical
+        expr: (bot_disk_usage_bytes{type="free"} / bot_disk_usage_bytes{type="total"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "💾 Критически мало места на диске"
+          description: "Осталось меньше 10% свободного места на {{ $labels.path }}"
+
+      - alert: DiskSpaceWarning
+        expr: (bot_disk_usage_bytes{type="free"} / bot_disk_usage_bytes{type="total"}) * 100 < 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Мало места на диске"
+          description: "Осталось меньше 20% свободного места на {{ $labels.path }}"
+
+      # API
+      - alert: ExternalAPIErrors
+        expr: increase(bot_api_errors_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "🌐 Ошибки внешнего API"
+          description: "{{ $value }} ошибок при обращении к API {{ $labels.api_name }}"

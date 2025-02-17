@@ -38,8 +38,8 @@ class TelegramRateLimiter:
     """Rate limiter с учетом ограничений Telegram"""
     def __init__(self):
         self.global_bucket = RateLimitBucket(
-            max_tokens=30,  # максимум 30 сообщений в секунду
-            refill_rate=30.0  # восстанавливаем 30 токенов в секунду
+            max_tokens=28,  # максимум 30 сообщений в секунду
+            refill_rate=28.0  # восстанавливаем 30 токенов в секунду
         )
         self.user_buckets: Dict[int, RateLimitBucket] = {}
         self.lock = asyncio.Lock()
