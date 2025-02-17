@@ -39,7 +39,9 @@ ENV/
 .env.local
 .env.docker
 
-# config.py
+# Configuration files
+config.py
+docker-compose.yml
 
 
 # Database
