@@ -23,6 +23,7 @@ async def show_help(message_or_callback, i18n: TranslatorRunner):
             i18n.get('help-text'),
             i18n.get('help-how-to-use'),
             f"{i18n.get('help-get-rates')}\n{i18n.get('help-get-rates-desc')}",
+            f"{i18n.get('help-my-currencies')}\n{i18n.get('help-my-currencies-desc')}",
             f"{i18n.get('help-add-currency')}\n{i18n.get('help-add-currency-desc')}",
             f"{i18n.get('help-set-alert')}\n{i18n.get('help-set-alert-desc')}",
             f"{i18n.get('help-manage-subscription')}\n{i18n.get('help-manage-subscription-desc')}",

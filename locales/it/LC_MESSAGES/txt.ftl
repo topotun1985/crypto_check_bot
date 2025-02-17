@@ -43,25 +43,29 @@ button-choose-rub = 💰 In rubli (RUB)
 btn-set-new-threshold = 📝 Imposta una nuova soglia
 btn-my-currencies = 🎯 Le mie monete
 #help
-help-text = 👋 Ciao! Questa è la sezione di aiuto.
+help-text = 👋 Ciao! Questa è la sezione di aiuto
 help-how-to-use = 🔍 Come usare il bot?
-help-get-rates = 📌 1. Ottieni informazioni sui tassi.
+help-get-rates = 📌 1. Ottenere informazioni sui tassi.
 help-get-rates-desc = Premi il pulsante «📊 Tutti i tassi delle monete». Il bot mostrerà il tasso attuale di tutte le monete disponibili.
-help-add-currency = 📌 2. Aggiungi una moneta alla lista di monitoraggio.
-help-add-currency-desc = Premi il pulsante «🪙 Scegli la moneta». Selezionando una moneta, premi «☑️ Moneta» per monitorarne il prezzo. A seconda del tuo abbonamento, puoi monitorare da 1 a 10 monete contemporaneamente.
-help-set-alert = 📌 3. Configura le notifiche sui tassi.
-help-set-alert-desc = Premi «🔔 Configura le notifiche» e scegli una moneta dalla lista monitorata. Inserisci il valore soglia del prezzo (ad es., soglia superiore per Bitcoin 99000$). Il bot invierà una notifica quando il tasso raggiungerà il valore specificato.
-help-manage-subscription = 📌 4. Gestisci l'abbonamento.
+help-my-currencies = 📌 2. 🎯 Le mie monete.
+help-my-currencies-desc = Nella sezione «🎯 Le mie monete» puoi:
+  - Visualizzare tutte le monete monitorate
+  - Controllare i tassi attuali
+help-add-currency = 📌 3. Aggiungere una moneta alla lista di monitoraggio.
+help-add-currency-desc = Premi il pulsante «🪙 Scegli la moneta». Seleziona una moneta e tocca «☑️ Moneta» per monitorarne le variazioni di prezzo. A seconda dell'abbonamento, puoi monitorare da 1 a 10 monete contemporaneamente.
+help-set-alert = 📌 4. Configurare le notifiche sui tassi.
+help-set-alert-desc = Premi «🔔 Configura le notifiche» e scegli una moneta dalla lista di monitoraggio. Inserisci un valore limite per il prezzo (ad es., limite superiore per Bitcoin 99000$). Il bot invierà una notifica quando il tasso raggiungerà il valore specificato.
+help-manage-subscription = 📌 5. Gestire l'abbonamento.
 help-manage-subscription-desc = Nella sezione «💳 Abbonamento» puoi:
-  - Conoscere il tuo piano attuale e i limiti.
+  - Conoscere il piano attuale e i limiti.
   - Acquistare un nuovo abbonamento con Telegram Stars.
-  - Visualizzare la durata dell'abbonamento.
+  - Visualizzare la validità dell'abbonamento.
   - Dopo l'acquisto, i limiti delle monete vengono aggiornati automaticamente.
-help-commands = 📌 5. Comandi principali:
+help-commands = 📌 6. Comandi principali:
 help-commands-list = 
   /start — Menu principale
   /help — Aiuto
-  /subscription — Gestisci abbonamento
+  /subscription — Gestire l'abbonamento
   /subscription_terms — Termini di abbonamento
   /support — Supporto
 help-support = ✉️ Supporto: pricealertprobot@outlook.com
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Abbonamenti a pagamento
       Basic (200 Stars):
-      📈 Monitoraggio: Fino a 4 monete.
+      📈 Monitoraggio: Fino a { $basic_limit } monete.
       ⏳ Durata: 30 giorni.
 
       Standard (300 Stars):
-      📈 Monitoraggio: Fino a 7 monete.
+      📈 Monitoraggio: Fino a { $standard_limit } monete.
       ⏳ Durata: 30 giorni.
       
       Premium (400 Stars):
-      📈 Monitoraggio: Fino a 10 monete.
+      📈 Monitoraggio: Fino a { $premium_limit } monete.
       ⏳ Durata: 30 giorni.
 
       3. Condizioni importanti

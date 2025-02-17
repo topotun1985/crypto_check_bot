@@ -23,6 +23,7 @@ subscription-invoice-description = Suscríbete a { $plan } por 30 días
 subscription-price-label = Suscripción { $plan }
 #btn
 btn-all-rates = 📊 Todas las cotizaciones de monedas
+btn-my-currencies = 🎯 Mis monedas
 btn-choose-currency = 🪙 Elegir moneda
 btn-set-alert = 🔔 Configurar notificaciones
 btn-subscription = 💳 Suscripción
@@ -41,28 +42,31 @@ btn-toggle-currency = 🔄 Mostrar en { $currency }
 button-choose-usd = 💵 En dólares (USD)
 button-choose-rub = 💰 En rublos (RUB)
 btn-set-new-threshold = 📝 Establecer nuevo umbral
-btn-my-currencies = 🎯 Mis monedas
 #help
-help-text = 👋 ¡Hola! Esta es la sección de ayuda.
+help-text = 👋 ¡Hola! Esta es la sección de ayuda
 help-how-to-use = 🔍 ¿Cómo usar el bot?
-help-get-rates = 📌 1. Obtener información sobre las tasas.
-help-get-rates-desc = Presiona el botón «📊 Todas las cotizaciones de monedas». El bot mostrará la tasa actual de todas las monedas disponibles en el bot.
-help-add-currency = 📌 2. Agregar una moneda a la lista de seguimiento.
-help-add-currency-desc = Presiona el botón «🪙 Elegir moneda». Al seleccionar una moneda, toca «☑️ Moneda» para seguir sus cambios de precio. Dependiendo de tu suscripción, puedes seguir de 1 a 10 monedas simultáneamente.
-help-set-alert = 📌 3. Configurar notificaciones de tasas.
-help-set-alert-desc = Presiona «🔔 Configurar notificaciones» y elige una moneda de la lista de seguimiento. Ingresa el valor umbral del precio (por ejemplo, umbral superior para Bitcoin 99000$). El bot enviará una notificación cuando la tasa alcance el valor especificado.
-help-manage-subscription = 📌 4. Gestión de suscripción.
+help-get-rates = 📌 1. Obtener información sobre las cotizaciones.
+help-get-rates-desc = Pulsa el botón «📊 Todas las cotizaciones de monedas». El bot mostrará la cotización actual de todas las monedas disponibles.
+help-my-currencies = 📌 2. 🎯 Mis monedas.
+help-my-currencies-desc = En la sección «🎯 Mis monedas» puedes:
+  - Ver todas las monedas en seguimiento
+  - Consultar las cotizaciones actuales
+help-add-currency = 📌 3. Añadir una moneda a la lista de seguimiento.
+help-add-currency-desc = Pulsa el botón «🪙 Elegir moneda». Al seleccionar una moneda, toca «☑️ Moneda» para seguir los cambios en su precio. Dependiendo de tu suscripción, puedes rastrear de 1 a 10 monedas simultáneamente.
+help-set-alert = 📌 4. Configurar notificaciones de cotización.
+help-set-alert-desc = Pulsa «🔔 Configurar notificaciones» y elige una moneda de la lista de seguimiento. Introduce un valor umbral para el precio (por ejemplo, umbral superior para Bitcoin 99000$). El bot enviará una notificación cuando el precio alcance ese valor.
+help-manage-subscription = 📌 5. Gestionar la suscripción.
 help-manage-subscription-desc = En la sección «💳 Suscripción» puedes:
   - Conocer el plan actual y los límites.
   - Comprar una nueva suscripción con Telegram Stars.
-  - Ver el periodo de validez de la suscripción.
-  - Después de adquirir una suscripción, los límites de monedas se actualizan automáticamente.
-help-commands = 📌 5. Comandos principales:
+  - Consultar la validez de la suscripción.
+  - Después de la compra, los límites de monedas se actualizan automáticamente.
+help-commands = 📌 6. Comandos principales:
 help-commands-list = 
   /start — Menú principal
   /help — Ayuda
-  /subscription — Gestión de suscripción
-  /subscription_terms — Términos de suscripción
+  /subscription — Gestionar la suscripción
+  /subscription_terms — Términos de la suscripción
   /support — Soporte
 help-support = ✉️ Soporte: pricealertprobot@outlook.com
 #rate
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Suscripciones de pago
       Basic (200 Stars):
-      📈 Seguimiento: Hasta 4 monedas.
+      📈 Seguimiento: Hasta { $basic_limit } monedas.
       ⏳ Validez: 30 días.
 
       Standard (300 Stars):
-      📈 Seguimiento: Hasta 7 monedas.
+      📈 Seguimiento: Hasta { $standard_limit } monedas.
       ⏳ Validez: 30 días.
       
       Premium (400 Stars):
-      📈 Seguimiento: Hasta 10 monedas.
+      📈 Seguimiento: Hasta { $premium_limit } monedas.
       ⏳ Validez: 30 días.
 
       3. Condiciones importantes

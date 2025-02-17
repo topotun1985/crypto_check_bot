@@ -2,6 +2,7 @@ import os
 import asyncio
 import logging
 import signal
+import config
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -46,31 +47,49 @@ def get_commands_for_language(i18n: TranslatorRunner) -> list[BotCommand]:
 
 
 async def set_bot_commands(bot: Bot, translator_hub):
-    """Устанавливает команды бота."""
-    # Удаляем все существующие команды
+    """Устанавливает команды бота для каждого поддерживаемого языка."""
+    # Список поддерживаемых языков
+    supported_languages = ["ru", "en", "de", "es", "fr", "it", "pt"]
+    
     try:
-        # Удаляем команды без языка
+        # Удаляем глобальные команды (без языка)
         await bot.delete_my_commands(scope=BotCommandScopeDefault())
+        
         # Удаляем команды для каждого языка
-        for lang in ["ru", "en"]:
-            await bot.delete_my_commands(scope=BotCommandScopeDefault(), language_code=lang)
+        for lang in supported_languages:
+            try:
+                await bot.delete_my_commands(
+                    scope=BotCommandScopeDefault(),
+                    language_code=lang
+                )
+            except Exception as e:
+                logger.warning(f"Failed to delete commands for {lang}: {e}")
+        
+        # Устанавливаем команды для каждого языка
+        for lang in supported_languages:
+            try:
+                # Получаем переводчик для конкретного языка
+                i18n = translator_hub.get_translator_by_locale(locale=lang)
+                # Получаем локализованные команды
+                commands = get_commands_for_language(i18n)
+                
+                # Устанавливаем команды для конкретного языка
+                await bot.set_my_commands(
+                    commands,
+                    scope=BotCommandScopeDefault(),
+                    language_code=lang
+                )
+                logger.info(f"Set commands for language: {lang}")
+            except Exception as e:
+                logger.error(f"Failed to set commands for {lang}: {e}")
+        
+        # Устанавливаем английские команды как дефолтные (без указания языка)
+        i18n = translator_hub.get_translator_by_locale(locale="en")
+        default_commands = get_commands_for_language(i18n)
+        await bot.set_my_commands(default_commands, scope=BotCommandScopeDefault())
+        
     except Exception as e:
-        logger.warning(f"Failed to delete commands: {e}")
-    
-    # Создаем команды на английском
-    commands = [
-        BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="help", description="Help"),
-        BotCommand(command="subscription", description="Manage subscription"),
-        BotCommand(command="subscription_terms", description="Subscription terms"),
-        BotCommand(command="support", description="Support")
-    ]
-    
-    # Устанавливаем команды
-    try:
-        await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
-    except Exception as e:
-        logger.warning(f"Failed to set commands: {e}")
+        logger.error(f"Failed to set bot commands: {e}")
 
 # Функция конфигурирования и запуска бота
 async def main():
@@ -165,10 +184,10 @@ async def main():
         # Инициализируем и запускаем мониторинг
         monitoring_service = MonitoringService(
             bot=bot,
-            prometheus_port=9091,
-            alerter_port=9087,
-            channel_id="-1002266901682",
-            admin_id=855277058
+            prometheus_port=config.MONITORING_PROMETHEUS_PORT,
+            alerter_port=config.MONITORING_ALERTER_PORT,
+            channel_id=str(config.TELEGRAM_ALERTS_CHANNEL_ID),
+            admin_id=config.TELEGRAM_ADMIN_ID
         )
         await monitoring_service.start()
         logger.info("Monitoring service started")

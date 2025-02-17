@@ -23,6 +23,7 @@ subscription-invoice-description = Abonnieren Sie { $plan } für 30 Tage
 subscription-price-label = Abonnement { $plan }
 #btn
 btn-all-rates = 📊 Alle Coin-Kurse
+btn-my-currencies = 🎯 Meine Coins
 btn-choose-currency = 🪙 Münze auswählen
 btn-set-alert = 🔔 Benachrichtigungen einstellen
 btn-subscription = 💳 Abonnement
@@ -41,23 +42,26 @@ btn-toggle-currency = 🔄 In { $currency } anzeigen
 button-choose-usd = 💵 In US-Dollar (USD)
 button-choose-rub = 💰 In Rubel (RUB)
 btn-set-new-threshold = 📝 Neuen Schwellenwert festlegen
-btn-my-currencies = 🎯 Meine Münzen
 #help
-help-text = 👋 Hallo! Dies ist der Hilfebereich.
+help-text = 👋 Hallo! Dies ist der Hilfebereich
 help-how-to-use = 🔍 Wie benutzt man den Bot?
-help-get-rates = 📌 1. Informationen zu den Kursen abrufen.
-help-get-rates-desc = Drücken Sie den Button «📊 Alle Coin-Kurse». Der Bot zeigt den aktuellen Kurs aller verfügbaren Coins an.
-help-add-currency = 📌 2. Eine Münze zur Überwachungsliste hinzufügen.
-help-add-currency-desc = Drücken Sie den Button «🪙 Münze auswählen». Wählen Sie eine Münze aus und tippen Sie auf «☑️ Münze», um Preisänderungen zu überwachen. Je nach Abonnement können Sie 1 bis 10 Münzen gleichzeitig überwachen.
-help-set-alert = 📌 3. Kursbenachrichtigungen einrichten.
-help-set-alert-desc = Drücken Sie «🔔 Benachrichtigungen einstellen» und wählen Sie eine Münze aus der Überwachungsliste. Geben Sie den Schwellenwert ein (z. B. obere Grenze für Bitcoin 99000$). Der Bot sendet eine Benachrichtigung, sobald der Kurs den angegebenen Wert erreicht.
-help-manage-subscription = 📌 4. Abonnement verwalten.
-help-manage-subscription-desc = Im Bereich «💳 Abonnement» können Sie:
+help-get-rates = 📌 1. Abrufen von Kursinformationen.
+help-get-rates-desc = Drücke den Button «📊 Alle Coin-Kurse». Der Bot zeigt den aktuellen Kurs aller verfügbaren Coins an.
+help-my-currencies = 📌 2. 🎯 Meine Coins.
+help-my-currencies-desc = Im Bereich «🎯 Meine Coins» kannst du:
+  - Alle überwachten Coins ansehen
+  - Die aktuellen Kurse abrufen
+help-add-currency = 📌 3. Eine Coin zur Überwachungsliste hinzufügen.
+help-add-currency-desc = Drücke den Button «🪙 Münze auswählen». Wähle eine Münze aus und tippe auf «☑️ Münze», um Preisänderungen zu verfolgen. Abhängig von deinem Abonnement kannst du 1 bis 10 Coins gleichzeitig überwachen.
+help-set-alert = 📌 4. Benachrichtigungen für den Kurs einrichten.
+help-set-alert-desc = Drücke «🔔 Benachrichtigungen einstellen» und wähle eine Münze aus der Überwachungsliste. Gib einen Schwellenwert für den Preis ein (z. B. obere Grenze für Bitcoin 99000$). Der Bot sendet eine Benachrichtigung, wenn der Kurs den angegebenen Wert erreicht.
+help-manage-subscription = 📌 5. Abonnement verwalten.
+help-manage-subscription-desc = Im Bereich «💳 Abonnement» kannst du:
   - Den aktuellen Tarif und die Limits abrufen.
   - Ein neues Abonnement mit Telegram Stars kaufen.
   - Die Gültigkeitsdauer des Abonnements einsehen.
   - Nach dem Kauf wird das Münzlimit automatisch aktualisiert.
-help-commands = 📌 5. Hauptbefehle:
+help-commands = 📌 6. Hauptbefehle:
 help-commands-list = 
   /start — Hauptmenü
   /help — Hilfe
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Kostenpflichtige Abonnements
       Basic (200 Stars):
-      📈 Überwachung: Bis zu { $limit } Münzen.
+      📈 Überwachung: Bis zu { $basic_limit } Münzen.
       ⏳ Gültigkeit: 30 Tage.
 
       Standard (300 Stars):
-      📈 Überwachung: Bis zu { $limit } Münzen.
+      📈 Überwachung: Bis zu { $standard_limit } Münzen.
       ⏳ Gültigkeit: 30 Tage.
       
       Premium (400 Stars):
-      📈 Überwachung: Bis zu { $limit } Münzen.
+      📈 Überwachung: Bis zu { $premium_limit } Münzen.
       ⏳ Gültigkeit: 30 Tage.
 
       3. Wichtige Bedingungen

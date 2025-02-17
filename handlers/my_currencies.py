@@ -44,6 +44,10 @@ async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, sh
     try:
         user_id = callback.from_user.id
         async with get_db(telegram_id=callback.from_user.id) as session:
+            # Для не русских пользователей всегда показываем в USD
+            user = await get_user(session, callback.from_user.id)
+            if user.language != "ru":
+                show_in_rub = False
             # Получаем валюты пользователя
             user_currencies = await get_user_currencies(session, callback.from_user.id)
             subscription = await get_user_subscription(session, callback.from_user.id)
@@ -85,10 +89,10 @@ async def show_my_currencies(callback: CallbackQuery, i18n: TranslatorRunner, sh
                     i18n.get("rates-updated", time=last_update.strftime("%Y-%m-%d %H:%M:%S"))
                 ])
             
-            # Получаем пользователя для проверки языка
-            user = await get_user(session, callback.from_user.id)
-            
             # Выбираем клавиатуру в зависимости от языка
+            
+            # Выбираем клавиатуру
+            # Кнопка переключения валюты только для русского языка
             keyboard = get_my_currencies_keyboard(i18n, show_in_rub) if user.language == "ru" else back_to_menu_button(i18n)
             
             await callback.message.edit_text(
@@ -110,7 +114,8 @@ async def toggle_my_currency_display(callback: CallbackQuery, i18n: TranslatorRu
     try:
         # Деактивируем предыдущие диалоги
         
-        show_in_rub = callback.data.endswith("rub")
+        # Если кнопка "показать в долларах", то show_in_rub = False
+        show_in_rub = not callback.data.endswith("usd")
         await show_my_currencies(callback, i18n, show_in_rub)
     except Exception as e:
         logger.error(f"Error in toggle_my_currency_display for user {callback.from_user.id}: {str(e)}")

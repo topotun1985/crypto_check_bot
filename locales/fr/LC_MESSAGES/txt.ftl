@@ -43,28 +43,32 @@ button-choose-rub = 💰 En roubles (RUB)
 btn-set-new-threshold = 📝 Définir un nouveau seuil
 btn-my-currencies = 🎯 Mes devises
 #help
-help-text = 👋 Salut ! Ceci est la section d'aide.
-help-how-to-use = 🔍 Comment utiliser le bot ?
-help-get-rates = 📌 1. Obtenir les informations sur les taux.
-help-get-rates-desc = Appuyez sur le bouton «📊 Tous les taux des devises». Le bot affichera le taux actuel de toutes les devises disponibles.
-help-add-currency = 📌 2. Ajouter une devise à la liste de suivi.
-help-add-currency-desc = Appuyez sur le bouton «🪙 Choisir une devise». En sélectionnant une devise, appuyez sur «☑️ Devise» pour suivre l'évolution de son prix. Selon votre abonnement, vous pouvez suivre de 1 à 10 devises simultanément.
-help-set-alert = 📌 3. Configurer les notifications de taux.
-help-set-alert-desc = Appuyez sur «🔔 Configurer les notifications» et choisissez une devise dans la liste des suivies. Entrez la valeur seuil du prix (par exemple, seuil supérieur pour Bitcoin 99000$). Le bot vous enverra une notification lorsque le taux atteindra la valeur spécifiée.
-help-manage-subscription = 📌 4. Gérer l'abonnement.
+help-text = 👋 Salut! Ceci est la section d'aide
+help-how-to-use = 🔍 Comment utiliser le bot?
+help-get-rates = 📌 1. Obtenir des informations sur les taux.
+help-get-rates-desc = Appuyez sur le bouton «📊 Tous les taux de pièces». Le bot affichera le taux actuel de toutes les pièces disponibles.
+help-my-currencies = 📌 2. 🎯 Mes pièces.
+help-my-currencies-desc = Dans la section «🎯 Mes pièces», vous pouvez :
+  - Voir toutes les pièces suivies
+  - Consulter les taux actuels
+help-add-currency = 📌 3. Ajouter une pièce à la liste de suivi.
+help-add-currency-desc = Appuyez sur le bouton «🪙 Choisir la pièce». En sélectionnant une pièce, appuyez sur «☑️ Pièce» pour suivre les variations de prix. Selon votre abonnement, vous pouvez suivre de 1 à 10 pièces simultanément.
+help-set-alert = 📌 4. Configurer les notifications de taux.
+help-set-alert-desc = Appuyez sur «🔔 Configurer les notifications» et choisissez une pièce dans la liste de suivi. Entrez une valeur seuil pour le prix (par exemple, seuil supérieur pour Bitcoin 99000$). Le bot enverra une notification lorsque le taux atteindra la valeur spécifiée.
+help-manage-subscription = 📌 5. Gérer l'abonnement.
 help-manage-subscription-desc = Dans la section «💳 Abonnement», vous pouvez :
-  - Connaître votre plan actuel et ses limites.
-  - Acheter un nouvel abonnement avec des Telegram Stars.
-  - Voir la durée de validité de l'abonnement.
-  - Après l'achat d'un abonnement, les limites de devises sont automatiquement mises à jour.
-help-commands = 📌 5. Commandes principales :
+  - Consulter le plan actuel et les limites.
+  - Acheter un nouvel abonnement avec Telegram Stars.
+  - Vérifier la durée de validité de l'abonnement.
+  - Après l'achat, les limites des pièces sont automatiquement mises à jour.
+help-commands = 📌 6. Commandes principales:
 help-commands-list = 
   /start — Menu principal
   /help — Aide
   /subscription — Gérer l'abonnement
   /subscription_terms — Conditions d'abonnement
   /support — Support
-help-support = ✉️ Support : pricealertprobot@outlook.com
+help-support = ✉️ Support: pricealertprobot@outlook.com
 #rate
 rates-header = 📊 Taux actuels des cryptomonnaies :
 rate-format-usd = { $name } ({ $symbol }) : { $price } $
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Abonnements payants
       Basic (200 Stars) :
-      📈 Suivi : Jusqu'à 4 devises.
+      📈 Suivi : Jusqu'à { $basic_limit } devises.
       ⏳ Durée : 30 jours.
 
       Standard (300 Stars) :
-      📈 Suivi : Jusqu'à 7 devises.
+      📈 Suivi : Jusqu'à { $standard_limit } devises.
       ⏳ Durée : 30 jours.
       
       Premium (400 Stars) :
-      📈 Suivi : Jusqu'à 10 devises.
+      📈 Suivi : Jusqu'à { $premium_limit } devises.
       ⏳ Durée : 30 jours.
 
       3. Conditions importantes

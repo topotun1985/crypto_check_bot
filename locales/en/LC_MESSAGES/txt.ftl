@@ -23,6 +23,7 @@ subscription-invoice-description = Subscribe to { $plan } for 30 days
 subscription-price-label = Subscription { $plan }
 #btn
 btn-all-rates = 📊 All coin rates
+btn-my-currencies = 🎯 My coins
 btn-choose-currency = 🪙 Choose coin
 btn-set-alert = 🔔 Set up alerts
 btn-subscription = 💳 Subscription
@@ -41,23 +42,26 @@ btn-toggle-currency = 🔄 Show in { $currency }
 button-choose-usd = 💵 In dollars (USD)
 button-choose-rub = 💰 In rubles (RUB)
 btn-set-new-threshold = 📝 Set new threshold
-btn-my-currencies = 🎯 My coins
 #help
-help-text = 👋 Hello! This is the help section.
+help-text = 👋 Hello! This is the help section
 help-how-to-use = 🔍 How to use the bot?
 help-get-rates = 📌 1. Get rate information.
 help-get-rates-desc = Press the “📊 All coin rates” button. The bot will display the current rates of all available coins.
-help-add-currency = 📌 2. Add a coin to the tracking list.
+help-my-currencies = 📌 2. 🎯 My Coins.
+help-my-currencies-desc = In the «🎯 My Coins» section you can:
+  - View all your tracked coins
+  - Check current prices
+help-add-currency = 📌 3. Add a coin to the tracking list.
 help-add-currency-desc = Press the “🪙 Choose coin” button. When selecting a coin, tap “☑️ Coin” to track its price changes. Depending on your subscription, you can track from 1 to 10 coins simultaneously.
-help-set-alert = 📌 3. Set up rate alerts.
+help-set-alert = 📌 4. Set up rate alerts.
 help-set-alert-desc = Tap “🔔 Set up alerts” and choose a coin from your tracking list. Enter the threshold price (e.g., upper threshold for Bitcoin 99000$). The bot will send a notification when the rate reaches the specified value.
-help-manage-subscription = 📌 4. Manage subscription.
+help-manage-subscription = 📌 5. Manage subscription.
 help-manage-subscription-desc = In the “💳 Subscription” section, you can:
   - Check your current plan and limits.
   - Purchase a new subscription using Telegram Stars.
   - View the subscription validity period.
   - After purchasing a subscription, coin limits are updated automatically.
-help-commands = 📌 5. Main commands:
+help-commands = 📌 6. Main commands:
 help-commands-list = 
   /start — Main menu
   /help — Help
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Paid Subscriptions
       Basic (200 Stars):
-      📈 Monitoring: Up to 4 coins.
+      📈 Monitoring: Up to { $basic_limit } coins.
       ⏳ Validity: 30 days.
 
       Standard (300 Stars):
-      📈 Monitoring: Up to 7 coins.
+      📈 Monitoring: Up to { $standard_limit } coins.
       ⏳ Validity: 30 days.
       
       Premium (400 Stars):
-      📈 Monitoring: Up to 10 coins.
+      📈 Monitoring: Up to { $premium_limit } coins.
       ⏳ Validity: 30 days.
 
       3. Important Terms

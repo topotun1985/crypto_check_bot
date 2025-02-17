@@ -43,26 +43,30 @@ button-choose-rub = 💰 Em rublos (RUB)
 btn-set-new-threshold = 📝 Definir novo limite
 btn-my-currencies = 🎯 Minhas moedas
 #help
-help-text = 👋 Olá! Esta é a seção de ajuda.
+help-text = 👋 Olá! Esta é a seção de ajuda
 help-how-to-use = 🔍 Como usar o bot?
 help-get-rates = 📌 1. Obter informações sobre as cotações.
-help-get-rates-desc = Clique no botão «📊 Todas as cotações das moedas». O bot mostrará a cotação atual de todas as moedas disponíveis.
-help-add-currency = 📌 2. Adicionar uma moeda à lista de monitoramento.
-help-add-currency-desc = Clique no botão «🪙 Escolher moeda». Ao selecionar uma moeda, clique em «☑️ Moeda» para monitorar sua variação de preço. Dependendo da sua assinatura, você pode monitorar de 1 a 10 moedas simultaneamente.
-help-set-alert = 📌 3. Configurar alertas de cotação.
-help-set-alert-desc = Clique em «🔔 Configurar alertas» e escolha uma moeda da lista de monitoradas. Insira o valor limite do preço (por exemplo, limite superior para Bitcoin 99000$). O bot enviará uma notificação quando o preço atingir o valor especificado.
-help-manage-subscription = 📌 4. Gerenciar assinatura.
-help-manage-subscription-desc = Na seção «💳 Assinatura», você pode:
-  - Ver seu plano atual e os limites.
+help-get-rates-desc = Toque no botão «📊 Todas as cotações das moedas». O bot exibirá a cotação atual de todas as moedas disponíveis.
+help-my-currencies = 📌 2. 🎯 Minhas moedas.
+help-my-currencies-desc = Na seção «🎯 Minhas moedas» você pode:
+  - Ver todas as moedas monitoradas
+  - Consultar as cotações atuais
+help-add-currency = 📌 3. Adicionar uma moeda à lista de monitoramento.
+help-add-currency-desc = Toque no botão «🪙 Escolher moeda». Ao selecionar uma moeda, toque em «☑️ Moeda» para monitorar a variação do seu preço. Dependendo da sua assinatura, você pode monitorar de 1 a 10 moedas simultaneamente.
+help-set-alert = 📌 4. Configurar notificações de cotação.
+help-set-alert-desc = Toque em «🔔 Configurar notificações» e escolha uma moeda da lista de monitoramento. Insira um valor limite para o preço (por exemplo, limite superior para Bitcoin 99000$). O bot enviará uma notificação quando o preço atingir o valor especificado.
+help-manage-subscription = 📌 5. Gerenciar a assinatura.
+help-manage-subscription-desc = Na seção «💳 Assinatura» você pode:
+  - Ver o plano atual e os limites.
   - Comprar uma nova assinatura com Telegram Stars.
-  - Ver a validade da assinatura.
+  - Consultar a validade da assinatura.
   - Após a compra, os limites de moedas são atualizados automaticamente.
-help-commands = 📌 5. Comandos principais:
+help-commands = 📌 6. Comandos principais:
 help-commands-list = 
   /start — Menu principal
   /help — Ajuda
-  /subscription — Gerenciar assinatura
-  /subscription_terms — Termos de assinatura
+  /subscription — Gerenciar a assinatura
+  /subscription_terms — Termos da assinatura
   /support — Suporte
 help-support = ✉️ Suporte: pricealertprobot@outlook.com
 #rate
@@ -158,15 +162,15 @@ subscription-terms-text =
 
       2. Assinaturas Pagas
       Basic (200 Stars):
-      📈 Monitoramento: Até 4 moedas.
+      📈 Monitoramento: Até { $basic_limit } moedas.
       ⏳ Validade: 30 dias.
 
       Standard (300 Stars):
-      📈 Monitoramento: Até 7 moedas.
+      📈 Monitoramento: Até { $standard_limit } moedas.
       ⏳ Validade: 30 dias.
       
       Premium (400 Stars):
-      📈 Monitoramento: Até 10 moedas.
+      📈 Monitoramento: Até { $premium_limit } moedas.
       ⏳ Validade: 30 dias.
 
       3. Condições Importantes

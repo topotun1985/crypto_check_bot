@@ -210,7 +210,11 @@ async def show_subscription_terms(message_or_callback, i18n: TranslatorRunner):
     """Показывает условия подписок"""
     try:
         
-        terms_text = i18n.get('subscription-terms-text')
+        # Получаем текст с лимитами из конфигурации
+        terms_text = i18n.get('subscription-terms-text', 
+                            basic_limit=SUBSCRIPTION_PLANS['basic']['limit'],
+                            standard_limit=SUBSCRIPTION_PLANS['standard']['limit'],
+                            premium_limit=SUBSCRIPTION_PLANS['premium']['limit'])
 
         # Отправляем сообщение с условиями и кнопкой назад
         if isinstance(message_or_callback, Message):
